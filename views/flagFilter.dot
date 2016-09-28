@@ -1,0 +1,16 @@
+{{~it :cat}}
+
+<h3>{{!cat.category}}</h3>
+<div class="flagFilterCategory">
+
+   <ul>
+      {{~cat.filters :filter}}
+      <li class="flagFilter">
+         <b>{{=filter.count}}</b> &times; <a href='?filter={{!filter.search}}' class='{{=filter.cssClass||""}}'>{{!filter.name}}</a>
+      </li>
+      {{~}}
+      </ul>
+
+</div>
+
+{{~}}

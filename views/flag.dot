@@ -1,0 +1,36 @@
+<h3><a href='{{!it.url}}'>{{!it.title}}</a></h3>
+<div class="tags">
+{{~it.tags :tag}}
+   <a href="/questions/tagged/{{!tag}}" class="post-tag" title="show questions tagged '{{!tag}}'" rel="tag">{{!tag}}</a>
+{{~}}
+</div>
+<div class="author">
+   created <span title="{{=it.created}}" class="relativetime">
+      {{!FlagFilter.tools.formatDate(it.created)}}
+      </span>
+{{? it.author }}
+   <a href='{{!it.author.url}}'>{{!it.author.name}}</a>
+{{??}}
+   unknown
+{{?}}
+</div>
+<ul class="flagList">
+{{~it.flags :flag}}
+   <li>{{=flag.description}}
+      {{? flag.relatedPosts}}
+         <ul>
+         {{~flag.relatedPosts :rpost}}
+            <li><a href='{{!rpost.url}}'>{{!rpost.title}}</a></li>
+         {{~}}
+         </ul>
+      {{?}}
+   -
+   {{~flag.flaggers :flagger:i}}
+      <a href='{{!flagger.url}}'>{{!flagger.name}}</a> ({{=flagger.helpfulFlags||0}}/{{=flagger.declinedFlags||0}}),
+   {{~}}
+   <span title="{{=flag.created}}" class="relativetime">
+      {{!FlagFilter.tools.formatDate(flag.created)}}
+   </span>
+   </li>
+{{~}}
+</ul>

@@ -1,0 +1,74 @@
+#flaggedPosts
+{
+	width: 640px;
+	overflow: hidden;
+	padding-right: 20px;
+	float: left;
+}
+
+.FlaggedPost
+{
+	padding: .25em;
+}
+
+.FlaggedPost:nth-child(2n)
+{
+	background-color: rgba(0,0,0,0.025);
+}
+
+.FlaggedPost h3
+{
+   font-family: Arial;
+   font-weight: normal;
+   font-size: 16px;
+}
+
+#postflag-bar .nav-button.filtered-nav
+{
+   width: 30px;
+   background-color: #33a030;
+}
+
+#postflag-bar .migration-link
+{
+	float: right;
+}
+
+ul.flagList
+{
+	clear: both;
+	padding-top: 1em;
+}
+
+.author
+{
+	float: right;
+}
+
+#flagFilters
+{
+	width:320px;
+	overflow:hidden;
+}
+
+.flagFilterCategory
+{
+	max-height: 200px;
+	overflow: auto;
+}
+
+.flagFilterCategory ul
+{
+	list-style: none;
+	margin-left: 1em;
+}
+
+#flagSort
+{
+	margin-bottom: 1em;
+}
+
+#flagSort label
+{
+	margin-right: 1em;
+}

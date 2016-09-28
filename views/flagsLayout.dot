@@ -1,0 +1,30 @@
+<div id="mainbar-full">
+   <div class="subheader">
+       <h1>Moderator Tools</h1>
+       <div id="tabs">
+           <a href="/admin/links" title="moderator utilities and links">links</a>
+           <a href="/admin" title="summary of moderator activity">history</a>
+           <a href="/admin/dashboard" title="summary of current moderator alerts">flags</a>
+           <a class="youarehere" href="/admin/flags" title="a simple list of all pending flags with fast filtering">filtered flags</a>
+           <a href="/admin/posts/migrated/here" title="recently migrated posts">migrated</a>
+           <a href="/admin/users" title="users with flags, user messages, suspended users, annotations">users</a>
+           <a href="/admin/posts" title="locked posts, auto-flagged posts">posts</a>
+           <a href="/admin/analytics" title="site usage metrics">analytics</a>
+      </div>
+   </div>
+</div>
+
+<div id="flagSort">
+<label>Sort:</label>
+<label><input type="radio" name="sort" value="postDesc">post creation (desc)</label>
+<label><input type="radio" name="sort" value="postAsc">post creation (asc)</label>
+<label><input type="radio" name="sort" value="flagDesc" checked="checked">first flag (desc)</label>
+<label><input type="radio" name="sort" value="flagAsc">first flag (asc)</label>
+<label><input type="radio" name="sort" value="netHelpfulDesc">flagger hist (desc)</label>
+<label><input type="radio" name="sort" value="netHelpfulAsc">flagger hist (asc)</label>
+</div>
+
+<div id='flaggedPosts'>
+   <h1>Loading Flags <img src='http://sstatic.net/img/progress-dots.gif'></h1>
+</div>
+<div id='flagFilters'></div>
