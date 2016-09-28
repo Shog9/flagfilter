@@ -1594,12 +1594,12 @@ function initKeyboard()
 
             if (action.clickOrLink) {
                 var jElem = $(action.clickOrLink),
-                    evData = $._data($(jElem).get(0), "events"),
+                    evData = $._data(jElem.get(0), "events"),
                     doClick = false;
                 if (evData && evData.click && evData.click.length) // click handler bound?
                     doClick = true;
                 else {
-                    evData = $(document).data("events"); // live handler bound? (note that the generic delegate case is *not* checked)
+                    evData = $._data(document, "events"); // live handler bound? (note that the generic delegate case is *not* checked)
                     if (evData && evData.click) {
                         for (var i = 0; i < evData.click.length; i++) {
                             var sel = evData.click[i].selector;
