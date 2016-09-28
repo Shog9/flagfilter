@@ -1594,7 +1594,7 @@ function initKeyboard()
 
             if (action.clickOrLink) {
                 var jElem = $(action.clickOrLink),
-                    evData = jElem.data("events"),
+                    evData = $._data($(jElem).get(0), "events"),
                     doClick = false;
                 if (evData && evData.click && evData.click.length) // click handler bound?
                     doClick = true;
