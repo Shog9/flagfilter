@@ -72,7 +72,7 @@ function initRoute()
          var accountId = $(".sub-header-links a:contains('network profile')").attr('href').match(/\/users\/(\d+)/)[1];
          var container = $("#user-panel-reputation").parent()
             .empty();
-         var loading = $("<h3>TODO: load user info<img src='http://sstatic.net/img/progress-dots.gif'></h3>")
+         var loading = $("<h3>TODO: load user info<img src='//sstatic.net/img/progress-dots.gif'></h3>")
             .appendTo(container);
 
          // load all PII first, so we can access this later on
