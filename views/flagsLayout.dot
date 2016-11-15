@@ -25,6 +25,6 @@
 </div>
 
 <div id='flaggedPosts'>
-   <h1>Loading Flags <img src='http://sstatic.net/img/progress-dots.gif'></h1>
+   <h1>Loading Flags <img src='//sstatic.net/img/progress-dots.gif'></h1>
 </div>
 <div id='flagFilters'></div>
