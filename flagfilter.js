@@ -1145,7 +1145,7 @@ function initKeyboard()
             info.mainSiteLink = location.origin.replace(/(\/|\.)meta./, "$1");
         } else {
             var lastFooterLink = $("#footer-menu .top-footer-links a:last").attr("href");
-            if (lastFooterLink.replace(/^.*\/\//, "").replace(/(^|\.)meta./, "$1") == host)
+            if (lastFooterLink && lastFooterLink.replace(/^.*\/\//, "").replace(/(^|\.)meta./, "$1") == host)
                 info.metaSiteLink = lastFooterLink;
         }
 
