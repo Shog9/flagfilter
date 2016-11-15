@@ -255,6 +255,45 @@ function initTools()
       {
          return (new Date(isoDate.replace(/\s/,'T')))
             .toLocaleDateString(undefined, {year: "numeric", month: "short", day: "numeric", timeZone: "UTC"});
+      },
+
+      dismissAllCommentFlags: function(commentId, flagId)
+      {
+         // although the UI implies it's possible, we can't currently dismiss individual comment flags
+        return $.post('/admin/comment/' + commentId+ '/clear-flags', {fkey:StackExchange.options.user.fkey});
+      },
+
+
+      dismissFlag: function(postId, flagId, helpful, declineId, comment)
+      {
+         var ticks = window.renderTimeTicks||(Date.now()*10000+621355968000000000);
+         return $.post('/messages/delete-moderator-messages/' + postId + '/'
+            + ticks + '?valid=' + helpful + '&flagIdsSemiColonDelimited=' + flagId,
+            {comment: comment||declineId||'', fkey:StackExchange.options.user.fkey});
+      },
+
+      dismissAllFlags: function(postId, helpful, declineId, comment)
+      {
+         var ticks = window.renderTimeTicks||(Date.now()*10000+621355968000000000);
+         return $.post('/messages/delete-moderator-messages/' + postId + '/'
+            + ticks+ '?valid=' + helpful,
+            {comment: comment||declineId||'', fkey:StackExchange.options.user.fkey});
+      },
+
+      moveCommentsToChat: function(postId)
+      {
+         return $.post('/admin/posts/' + postId + '/move-comments-to-chat', {fkey:StackExchange.options.user.fkey});
+      },
+      
+      makeWait(msecs)
+      {
+         return function()
+         {
+            var args = arguments;
+            var result = $.Deferred();
+            setTimeout(function() { result.resolve.apply(result, args) }, msecs);
+            return result.promise();
+         }
       }
    };
 }
@@ -312,7 +351,7 @@ function initFlagFilter()
    $(window).on('popstate', restoreFilter);
 
    $("#flagSort input[name=sort]").click(restoreFilter);
-
+      
    function restoreFilter()
    {
       var filter = getQSVal("filter")[0] || '';
@@ -345,7 +384,12 @@ function initFlagFilter()
       localStorage.setItem("flaaaaags.lastFilter", location.toString());
 
       $('#flaggedPosts').empty();
-      renderFlags(sortedCollapsedFilteredFlaggedPosts);
+      renderFlags(sortedCollapsedFilteredFlaggedPosts).then(function()
+      {
+         $("<a>Dismiss all of these flags</a>")
+            .appendTo('#flaggedPosts')
+            .click(function() { dismissAllFilteredFlags($('#flaggedPosts'), unique(sortedCollapsedFilteredFlaggedPosts.map(function(p) { return p.postId; })), filter) });
+      });
 
       $("#flagCount").text(filteredFlaggedPosts.length + " flagged posts");
 
@@ -409,6 +453,8 @@ function initFlagFilter()
 
       function renderFlags(flaggedPosts, startAt)
       {
+         var result = $.Deferred();
+         
          // don't let these overlap
          clearTimeout(window.renderTimer);
          window.renderTimer = null; // debugging
@@ -430,9 +476,13 @@ function initFlagFilter()
 
          // finish rendering after letting the display update
          if ( startAt<flaggedPosts.length )
-            window.renderTimer = setTimeout(function() { renderFlags(flaggedPosts, startAt); }, 100);
+            window.renderTimer = setTimeout(function() { renderFlags(flaggedPosts, startAt).then(function(){result.resolve()}); }, 100);
+         else
+            result.resolve();
+            
+         return result.promise();
       }
-
+      
    }
 
    function buildFilterFunction(filter)
@@ -630,7 +680,77 @@ function initFlagFilter()
             return !dup;
          });
    }
+   
+   function dismissAllFilteredFlags(parentContainer, postIdsToDismiss, filter)
+   {       
+      if ( !filter.length || postIdsToDismiss.length > 200 )
+      {
+         alert("Too many flags - filter it.")
+         return;
+      }
 
+      var DoDismiss = function(helpful, declineId, comment)
+      {
+         if (!postIdsToDismiss.length)
+            return;
+         
+         var flaggedPostId = postIdsToDismiss.pop();
+         
+         FlagFilter.tools.dismissAllFlags(flaggedPostId, helpful, declineId, comment)
+         .then(FlagFilter.tools.makeWait(1000))
+         .then(function() 
+         { 
+            FlagFilter.flaggedPosts = flaggedPosts = FlagFilter.flaggedPosts.filter(f => f.postId != flaggedPostId);
+            filterFlags(filter);
+            DoDismiss(helpful, declineId, comment)
+         });
+      };
+      
+      flagDismissUI(parentContainer).then(function(dismissal)
+      {
+         if (!confirm("ARE YOU SURE you want to dismiss ALL FLAGS on these " + postIdsToDismiss.length + " posts all at once??"))
+            return;
+         
+         DoDismiss(dismissal.helpful, dismissal.declineId, dismissal.comment);
+      });
+
+   }
+   
+
+   function flagDismissUI(uiParent)
+   {
+      var result = $.Deferred();
+      var dismissTools = $('<div class="dismiss-flags-popup"><input type="text" maxlength="200" style="width:98%" placeholder="optional feedback (visible to the user)"><br><br><input type="button" value="helpful" title="the flags have merit but no further action is required"> &nbsp; &nbsp; <input type="button" value="decline: technical" title="errors are not mod biz"> <input type="button" value="decline: no evidence" title="to support these flags"> <input type="button" value="decline: no mods needed"  title="to handle these flags"></div>');
+
+      dismissTools
+         .appendTo(uiParent)
+         .slideDown();
+
+      dismissTools.find("input[value='helpful']").click(function()
+      {
+         // dismiss as helpful
+         dismissTools.remove();
+         result.resolve({helpful: true, declineId: 0, comment: dismissTools.find("input[type=text]").val()});
+      });
+      dismissTools.find("input[value='decline: technical']").click(function()
+      {
+         dismissTools.remove();
+         result.resolve({helpful: false, declineId: 1, comment: dismissTools.find("input[type=text]").val()});
+      });
+      dismissTools.find("input[value='decline: no evidence']").click(function()
+      {
+         dismissTools.remove();
+         result.resolve({helpful: false, declineId: 2, comment: dismissTools.find("input[type=text]").val()});
+      });
+      dismissTools.find("input[value='decline: no mods needed']").click(function()
+      {
+         dismissTools.remove();
+         result.resolve({helpful: false, declineId: 3, comment: dismissTools.find("input[type=text]").val()});
+      });
+      
+      return result.promise();
+   }
+   
 }
 
 function initReview()
