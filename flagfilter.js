@@ -242,7 +242,7 @@ function initTools()
       {
          var params = {
                userId: userId,
-               days: days,
+               reviewBanDays: days,
                fkey: StackExchange.options.user.fkey
             };
          if ( explanation )
@@ -763,7 +763,7 @@ function initReview()
    $(".review-ban-all").remove();
    $(".review-ban").remove();
 
-   var explanation = "You have made too many incorrect reviews. For an example of a task you should have reviewed differently, see: " + location.toString() + "\n";
+   var explanation = "Your review on " + location.toString() + " wasn't helpful; please review the history of the post and consider how choosing a different action could've helped achieve that outcome more quickly.\n";
 
    actions.forEach(function(act)
    {
