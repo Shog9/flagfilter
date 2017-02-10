@@ -819,6 +819,383 @@ function initReview()
 
 function initQuestionPage()
 {
+   
+   var flagCache = {};
+
+   GetFlagInfoFromWaffleBar();
+   initFlags(); // this may run too quickly, so...
+   $(document)
+      .ajaxSuccess(function(event, XMLHttpRequest, ajaxOptions)
+      {
+         if (ajaxOptions.url.indexOf("/admin/posts/issues/") == 0)
+         {
+            setTimeout(() => initFlags(), 1);
+         }
+         else if (/\/posts\/\d+\/comments/.test(ajaxOptions.url))
+         {
+            var postId = +ajaxOptions.url.match(/\/posts\/(\d+)\/comments/)[1];
+            setTimeout(() => ShowCommentFlags(postId), 1);
+         }
+      });
+
+   $("#content")
+      .on("click", "a.show-all-flags", function()
+      {
+         var postContainer = $(this)
+            .closest(".question,.answer");
+         var postId = $(this)
+            .data('postid');
+         LoadAllFlags(postId)
+            .then(flags => ShowFlags(postContainer, flags));
+      });
+
+   function initFlags()
+   {
+      var posts = $(".question, .answer");
+
+      posts.each(function()
+      {
+         var postContainer = $(this),
+            postId = postContainer.data('questionid') || postContainer.data('answerid'),
+            issues = postContainer.find(".post-issue-display"),
+            flagsLink = issues.find("a[href='/admin/posts/" + postId + "/show-flags']"),
+            commentsLink = issues.find("a[href='/admin/posts/" + postId + "/comments']"),
+            flags = flagCache[postId];
+
+         if (!flagsLink.length) return;
+
+         var tools = $(`<tr class="mod-tools" data-totalflags="${flagsLink.length ? flagsLink.text().match(/\d+/)[0] : 0}">
+<td colspan="2">
+<div class="mod-tools-post">
+    <h3 class='flag-summary'><a class='show-all-flags' data-postid='${postId}'>${flagsLink.text()}</a></h3>
+    <ul class="flags">
+    </ul>
+    <div class="mod-actions">
+    </div>
+</div>
+</td>
+</tr>`)
+            .insertAfter(postContainer.find(">table tr:first"));
+
+         if (flags)
+            ShowFlags(postContainer, flags);
+      });
+
+      $('#postflag-bar')
+         .remove();
+   }
+
+   function ShowFlags(postContainer, postFlags)
+   {
+      var tools = postContainer.find("tr.mod-tools");
+      var modActions = tools.find(".mod-actions")
+         .empty();
+
+      var flagContainer = tools.find("ul.flags")
+         .empty();
+      var activeCount = 0;
+      for (let flag of postFlags.flags)
+      {
+         if (flag.active) activeCount++;
+
+         if (flag.description === "spam" || flag.description === "rude or abusive")
+         {
+            if (!tools.find(".flag-dispute-spam")
+               .length)
+               $("<input class='flag-dispute-spam' type='button' value='Clear spam/offensive' title='Deletes all rude or abusive and spam flags on this post, as well as any automatic Community downvotes. If this post reached the flag limit, it will be undeleted and unlocked, and the owner will have their rep restored.'>")
+               .appendTo(modActions);
+         }
+
+         let flagItem = RenderFlagItem(flag);
+         flagContainer.append(flagItem);
+      }
+
+      if (activeCount > 0)
+      {
+         modActions.prepend(`
+<input class="flag-dismiss-all" type="button" value="no further action…" title="dismiss any moderator / spam / rude / abusive flags on this post">
+<input class="flag-delete-with-comment" type="button" value="delete with comment…" title="deletes this post with a comment the owner will see, as well as marking all flags as helpful">
+`);
+      }
+
+      var totalFlags = tools.data("totalflags");
+      if (postFlags.flags.length)
+      {
+         let flagSummaryText = [];
+         if (activeCount > 0) flagSummaryText.push(activeCount + " active flags");
+         if (activeCount < postFlags.flags.length) flagSummaryText.push((postFlags.flags.length - activeCount) + " resolved flags");
+         tools.find("h3.flag-summary")
+            .text(flagSummaryText.join("; "));
+      }
+      else if (totalFlags == postFlags.commentFlags.length)
+         tools.hide();
+
+      if (postFlags.commentFlags.length)
+      {
+         let issues = postContainer.find(".post-issue-display"),
+            moreCommentsLink = $("#comments-link-" + postFlags.postId + " a:last:visible"),
+            deletedCommentsLink = issues.find("a[href='/admin/posts/" + postFlags.postId + "/comments']"),
+            inactiveCommentFlags = !postFlags.commentFlags.every(f => f.active);
+
+         // load comments to trigger flag display
+         if (inactiveCommentFlags && deletedCommentsLink.length)
+            deletedCommentsLink.click();
+         else if (moreCommentsLink.length)
+            moreCommentsLink.click();
+         else
+            ShowCommentFlags(postFlags.postId);
+      }
+
+   }
+
+   function ShowCommentFlags(postId)
+   {
+      var commentContainer = $("#comments-" + postId);
+      var postContainer = commentContainer.closest(".question, .answer");
+      var tools = postContainer.find("tr.mod-tools");
+      var postFlags = flagCache[postId];
+
+      if (!postFlags || !postFlags.commentFlags.length || !commentContainer.length) return;
+
+      if (!commentContainer.find(".mod-tools-comment")
+         .length)
+      {
+         commentContainer
+            .addClass("mod-tools")
+            .find(">table>tbody")
+            .prepend(`<tr class="comment mod-tools-comment">
+<td></td>
+<td class="comment-text">
+<h3 class="comment-flag-summary"></h3>
+</td>
+</tr>`);
+      }
+
+      var activeCount = 0;
+      for (let flag of postFlags.commentFlags)
+      {
+         let comment = commentContainer.find("#comment-" + flag.commentId);
+         let container = comment.find(".comment-text .flags");
+         if (!container.length)
+            container = $('<div><ul class="flags"></ul></div>')
+            .appendTo(comment.find(".comment-text"))
+            .find(".flags");
+
+         comment.addClass("mod-tools-comment");
+
+         if (flag.active) activeCount++;
+
+         let flagItem = RenderFlagItem(flag);
+         container.append(flagItem);
+      }
+
+      var totalFlags = tools.data("totalflags");
+      var flagSummaryText = [];
+      if (activeCount > 0) flagSummaryText.push(activeCount + " active comment flags");
+      if (activeCount < postFlags.commentFlags.length)
+         flagSummaryText.push((postFlags.commentFlags.length - activeCount) + " resolved flags");
+      else if (postFlags.flags.length && activeCount + postFlags.flags.length < totalFlags)
+         flagSummaryText.push("");
+      commentContainer.find("h3.comment-flag-summary")
+         .text(flagSummaryText.join("; "));
+
+      // ensure resolved comment flags can be loaded even when there are active flags
+      if (activeCount == postFlags.commentFlags.length && postFlags.flags.length && activeCount + postFlags.flags.length < totalFlags)
+         commentContainer.find("h3.comment-flag-summary")
+         .append(`<a class='show-all-flags' data-postid='${postFlags.postId}'>${totalFlags - (activeCount + postFlags.flags.length)} resolved comment flags</a>`);
+   }
+
+   function RenderFlagItem(flag)
+   {
+      let flagItem = $(`<li>
+             <span class="flag-text revision-comment ${flag.active ? 'active-flag' : 'blur'}">${flag.description}</span>
+             <span class="flag-info" data-flag-ids="${flag.flagIds ? flag.flagIds.join(';') : flag.flagId}">
+                 –
+                <span class="flaggers"></span>
+                 <a class="flag-dismiss comment-delete delete-tag" title="dismiss this flag"></a>
+             </span>
+         </li>`);
+
+      if (flag.result)
+      {
+         $("<div class='flag-outcome'></div>")
+            .text(flag.result + " – ")
+            .append(flag.resultUser ? `<a href="/users/${flag.resultUser.userId}" class="flag-creation-user comment-user">${flag.resultUser.name}</a>` : '')
+            .append(`<span class="flag-creation-date comment-date" dir="ltr"> <span title="${flag.resultDate.toISOString()}" class="relativetime-clean">${flag.resultDate.toLocaleDateString(undefined, {year: "2-digit", month: "short", day: "numeric", hour: "numeric", minute: "numeric", hour12: false, timeZone: "UTC"})}</span></span>`)
+            .appendTo(flagItem);
+      }
+
+      if (!flag.active)
+      {
+         flagItem.find(".flag-dismiss")
+            .remove();
+      }
+
+      if (flag.flaggers)
+      {
+         for (let user of flag.flaggers)
+         {
+            flagItem.find(".flaggers")
+               .append(
+                  `<a href="/users/${user.userId}" class="flag-creation-user comment-user">${user.name}</a>
+               <span class="flag-creation-date comment-date" dir="ltr"><span title="${user.flagCreationDate.toISOString()}" class="relativetime-clean">${user.flagCreationDate.toLocaleDateString(undefined, {year: "2-digit", month: "short", day: "numeric", hour: "numeric", minute: "numeric", hour12: false, timeZone: "UTC"})}</span></span>`);
+         }
+      }
+      return flagItem;
+   }
+
+   function LoadAllFlags(postId)
+   {
+      return $.get("/admin/posts/timeline/" + postId)
+         .then(function(r)
+         {
+            var ret = {
+               postId: postId,
+               flags: [],
+               commentFlags: []
+            };
+            var flagList = $($.parseHTML(r))
+               .find(".post-timeline .event-rows tr");
+            flagList.has("td.event-type .flag")
+               .each(function()
+               {
+                  var row = $(this);
+                  var id = row.data("eventid");
+                  var deleteRow = flagList.filter(".deleted-event-details[data-eventid=" + id + "]");
+                  var created = row.find(">td.creation-date span.relativetime");
+                  var eventType = row.find(">td.event-type>span.event-type");
+                  var flagType = row.find(">td.event-verb>span");
+                  var flagger = row.find(">td>span.created-by>a");
+                  var description = row.find(">td.event-comment>span");
+                  var deleted = deleteRow.find(">td.creation-date span.relativetime");
+                  var mod = deleteRow.find(">td>span.created-by>a");
+                  var result = deleteRow.find(">td.event-comment>span");
+
+                  if ($.trim(eventType.text()) === "comment flag")
+                  {
+                     var comment = flagList.has("td.event-type>.comment")
+                        .has("td.event-comment .toggle-comment-flags-container a[data-flag-ids*=" + id + "]");
+
+                     ret.commentFlags.push(
+                     {
+                        flagId: id,
+                        commentId: comment.data("eventid"),
+                        description: $.trim(description.html()) || $.trim(flagType.text()),
+                        active: !deleted.length,
+                        result: $.trim(result.text()),
+                        resultDate: deleted.length ? new Date(deleted.attr("title")) : null,
+                        resultUser:
+                        {
+                           userId: mod.length ? +mod.attr("href")
+                              .match(/\/users\/([-\d]+)/)[1] : -1,
+                           name: mod.text()
+                        },
+                        flaggers: [
+                        {
+                           userId: flagger.length ? +flagger.attr("href")
+                              .match(/\/users\/([-\d]+)/)[1] : -1,
+                           name: flagger.text(),
+                           flagCreationDate: new Date(created.attr("title"))
+                        }]
+                     });
+                  }
+                  else
+                  {
+                     ret.flags.push(
+                     {
+                        flagIds: [id],
+                        description: $.trim(description.html()) || $.trim(flagType.text()),
+                        active: !deleted.length,
+                        result: $.trim(result.text()),
+                        resultDate: deleted.length ? new Date(deleted.attr("title")) : null,
+                        resultUser:
+                        {
+                           userId: mod.length ? +mod.attr("href")
+                              .match(/\/users\/([-\d]+)/)[1] : -1,
+                           name: mod.text()
+                        },
+                        flaggers: [
+                        {
+                           userId: flagger.length ? +flagger.attr("href")
+                              .match(/\/users\/([-\d]+)/)[1] : -1,
+                           name: flagger.text(),
+                           flagCreationDate: new Date(created.attr("title"))
+                        }]
+                     });
+
+                  }
+               });
+
+            flagCache[postId] = ret;
+
+            return ret;
+         });
+   }
+
+
+   function GetFlagInfoFromWaffleBar()
+   {
+      return $(".flagged-post-row")
+         .map(function()
+         {
+            var fp = $(this);
+            var ret = {
+               postId: fp.data("post-id"),
+
+               flags: fp.find(".flag-row")
+                  .map(function()
+                  {
+                     var flag = $(this);
+                     var ids = flag.data("flag-ids");
+                     ids = ids.split ? ids.split(';')
+                        .map(id => +id) : [ids];
+                     return {
+                        flagIds: ids,
+                        description: $.trim(flag.find(".revision-comment")
+                           .html()),
+                        active: flag.find(".active-flag")
+                           .length > 0,
+                        flaggers: flag.find("a[href*='/users/']")
+                           .map(function()
+                           {
+                              var userId = this.href.match(/\/users\/([-\d]+)/);
+                              return {
+                                 id: userId && userId.length > 0 ? +userId[1] : null,
+                                 name: this.textContent,
+                                 flagCreationDate: new Date($(this)
+                                    .next(".relativetime")
+                                    .attr('title') || Date.now())
+                              };
+                           })
+                           .toArray()
+                     };
+                  })
+                  .toArray(),
+
+               commentFlags: fp.find("table.comments tr")
+                  .map(function()
+                  {
+                     var flag = $(this);
+                     var commentId = flag.attr("class")
+                        .match(/comment-flagged-(\d+)/);
+                     if (!commentId || commentId.length < 2) return;
+                     return {
+                        commentId: +commentId[1],
+                        active: true,
+                        description: $.trim(flag.find(".revision-comment")
+                           .html())
+                     };
+                  })
+                  .toArray()
+            };
+            flagCache[ret.postId] = ret;
+            return ret;
+         })
+         .toArray();
+   }
+
+   
+   
    if ( localStorage.flaaaaags )
    {
       $(".nav-button.next")
@@ -864,1041 +1241,9 @@ function initQuestionPage()
       });
 }
 
-//
-// Adapted slightly from balpha's Keyboard shortcuts for StackExchange userscript
-// http://stackapps.com/questions/2567/official-keyboard-shortcuts
-//
 
 function initKeyboard()
 {
-    var updateMessage;
-
-    if (!(window.StackExchange && StackExchange.helpers && StackExchange.helpers.DelayedReaction))
-        return;
-
-    var TOP_BAR = $("body > .topbar");
-    if (!TOP_BAR.length)
-        TOP_BAR = false;
-
-    function setting(name, val) {
-        var prefix = "flaaaaags-keyboard-shortcuts.settings.";
-        if (arguments.length < 2) {
-            try {
-                val = localStorage.getItem(prefix + name) ;
-                return val === "true" ? true : val === "false" ? false : val;
-            } catch (e) {
-                return;
-            }
-        } else {
-            try {
-                return localStorage.setItem(prefix + name, val);
-            } catch (e) {
-                return;
-            }
-        }
-    }
-
-    var style = ".keyboard-console { background-color: black; background-color: rgba(0, 0, 0, .8); position: fixed; left: 100px; bottom: 100px;" +
-                    "padding: 10px; text-align: left; border-radius: 6px; z-index: 1000 }" + // the global inbox has z-index 999
-                ".keyboard-console pre { background-color: transparent; color: #ccc; width: auto; height: auto; padding: 0; margin: 0; overflow: visible; line-height:1.5; }" +
-                ".keyboard-console pre b, .keyboard-console pre a { color: white !important; }" +
-                ".keyboard-console pre kbd { display: inline-block; font-family: monospace; }" +
-                ".keyboard-selected { box-shadow: 15px 15px 50px rgba(0, 0, 0, .2) inset; }"
-    $("<style type='text/css' />").text(style).appendTo("head");
-
-    function showConsole(text) {
-        var cons = $(".keyboard-console pre");
-        if (!text.length) {
-            cons.parent().hide();
-            return;
-        }
-
-        if (!cons.length) {
-            cons = $("<div class='keyboard-console'><pre /></div>").appendTo("body").find("pre");
-        }
-        text = text.replace(/^!(.*)$/mg, "<b>$1</b>");
-        cons.html(text).parent().show();
-    }
-
-    function Shortcuts() {
-        this.order = []
-        this.actions = {}
-    }
-
-    Shortcuts.prototype.add = function (key, name, action)  {
-        if (this.actions[key])
-            StackExchange.debug.log("duplicate shortcut " + key);
-        this.order.push(key);
-        this.actions[key] = action;
-        action.name = $("<span />").text(name).html();
-    }
-
-    function truncate(s) {
-        s = $.trim(s.replace(/[\r\n ]+/g, " "));
-        if (s.length > 40)
-            s = s.substr(0, 37) + "...";
-        return s;
-    }
-
-    var popupMode = {
-        name: "Popup...",
-        isApplicable: function () { return $(".popup").length },
-        getShortcuts: function () {
-            var pane = $(".popup-active-pane"),
-                result = new Shortcuts(),
-                i = 1, j = 65,
-                animated = [];
-
-            if (!pane.length)
-                pane = $(".popup");
-
-           // hack: make sure enter submits the form
-           if ( !pane.find("button[type=submit], input[type=submit]").length && pane.find("button, input[type=button]").length==1)
-           {
-              pane.keyup(function(ev)
-              {
-                  if (ev.which!=13) return;
-
-                  pane.find("button, input[type=button]").click();
-              });
-           }
-
-            pane.find(".action-list > li input[type='radio']:visible").each(function () {
-                var radio = $(this),
-                    li = radio.closest("li"),
-                    label = li.find("label span:not(action-desc):first"),
-                    subform = li.find(".action-subform");
-
-                result.add("" + i, $.trim(label.text()) || "unknown action", { func: function () { radio.focus().attr('checked', 'checked').click(); } }); // make sure it's checked before firing the handler!
-
-                if (subform.length) {
-
-                    subform.find("input[type='radio']:visible").each(function () {
-                        var jThis = $(this),
-                            sublabel = jThis.closest("li").find("label span:first");
-                        result.add(String.fromCharCode(j), truncate(sublabel.text() || "other"), { func: function () { jThis.focus().click(); } });
-                        j++;
-                    });
-                    animated.push(subform);
-                }
-                i++;
-            });
-            if (animated.length) {
-                result.animated = $(animated);
-            }
-            return result;
-        }
-    }
-
-    var dismissMode = {
-        name: "Dismiss flags...",
-        isApplicable: function () { return $(".no-further-action-popup").length },
-        getShortcuts: function () {
-            var pane = $(".no-further-action-popup"),
-                result = new Shortcuts();
-
-            result.add("H", "helpful", { clickOrLink: ".no-further-action-popup .mark-as-helpful" });
-            result.add("D", "decline", { clickOrLink: ".no-further-action-popup .decline-flags", initiatesMode: popupMode });
-            return result;
-        }
-    }
-
-    function getTopBarDialogMode(name, diaSelector, itemSelector) {
-        return {
-            name: name,
-            isApplicable: function () { return TOP_BAR.find(diaSelector).length; },
-            getShortcuts: function () {
-                var choices = TOP_BAR.find(diaSelector + " " + itemSelector),
-                    i, text, url, choice, result
-                    count = Math.min(choices.length, 9);i
-                result = new Shortcuts();
-                for (i = 0; i < count; i++) {
-                    choice = choices.eq(i);
-                    text = truncate(choice.closest("li").text());
-                    url = choice.attr("href");
-                    result.add("" + (i + 1), text, { url: url });
-                }
-                return result;
-            }
-        }
-    }
-
-    function getTopBarDialogShortcut(buttonSelector, name, diaSelector, itemSelector) {
-        return {
-            onlyIf: ".topbar " + buttonSelector,
-            func: function () { TOP_BAR.find(buttonSelector).click(); animateScrollTo(0); },
-            initiatesMode: getTopBarDialogMode(name, diaSelector, itemSelector)
-        };
-    }
-
-    var inboxMode;
-    if (!TOP_BAR) {
-        inboxMode = {
-            name: "Inbox item...",
-            isApplicable: function () { return $("#seContainerInbox:visible").length; },
-            getShortcuts: function () {
-                var choices = $(".topbar .inbox-dialog li.inbox-item a, #seContainerInbox > .itemBox > .siteInfo > p:first-child > a"),
-                    i, text, url, choice, result
-                    count = Math.min(choices.length, 9);
-                result = new Shortcuts();
-                for (i = 0; i < count; i++) {
-                    choice = choices.eq(i);
-                    text = truncate(choice.text());
-                    url = choice.attr("href");
-                    result.add("" + (i + 1), text, { url: url });
-                }
-                return result;
-            }
-        }
-    }
-
-    var currentMode;
-    function getCurrentMode() {
-        if (!currentMode)
-            return;
-        if (!currentMode.isApplicable())
-            return;
-        return currentMode;
-    }
-
-    function init(forceSelectable) {
-
-       // annotate flagged posts to allow them to be selectable
-       $("#postflag-bar .m-flag").each(function()
-       {
-            var selector = this.id.replace("flagged-", '') == location.pathname.match(/\/questions\/(\d+)/)[1]
-               ? "#question"
-               : this.id.replace("flagged-", "#answer-");
-          $(selector).data('flag-bar', this.id);
-       });
-
-        var currentSelectable,
-            shortcuts = new Shortcuts(),
-            currentLevel = shortcuts,
-            info = {},
-            selectables = {
-                questionPage: { name: "post", selector: ".question, .answer" },
-                questionListing: { name: "question",
-                    selector: "#questions .question-summary:visible, #question-mini-list .question-summary:visible, .user-questions .question-summary, "
-                              + "#questions-table .question-summary, .fav-post .question-summary, #bounties-table .question-summary",
-                },
-                answerListing: { name: "answer", selector: "#answers-table .answer-summary .answer-link, .user-answers .answer-summary" },
-                tagListing: { name: "tag", selector: "#tags-browser .tag-cell" },
-                userListing: { name: "user", selector: "#user-browser .user-info" },
-                badgeListing: { name: "badge", selector: "body.badges-page tr td:nth-child(2)" },
-                userSiteListing: { name: "site", selector: "#content .module .account-container" },
-                activityListing: { name: "activity", selector: "table.history-table tr:has(div.date) td:last-child" },
-                reputationListing: { name: "rep", selector: "table.rep-table > tbody > tr.rep-table-row > td:last-child" },
-                flagListing: { name: "flag", selector: "table.flagged-posts.moderator > tbody > tr > td div.mod-post-header", hrefOnly: true },
-                // ^^^ did that ever actually work? Should be td.mod-post-header, AFAIK
-                flaggedQuestion: { name: "flagged post", selector: ".question:data(flag-bar), .answer:data(flag-bar)" }
-            };
-
-        if ($(selectables.flaggedQuestion.selector).length) {
-            info.isQuestionPage = true;
-            currentSelectable = selectables.flaggedQuestion;
-        } else if (/^\/questions\/\d+/i.test(location.pathname)) {
-            info.isQuestionPage = true;
-            currentSelectable = selectables.questionPage;
-        } else if (/^\/users\/\d+/i.test(location.pathname)) {
-            info.isProfilePage = true;
-        }
-        else if ($(selectables.answerListing.selector).length) {
-            info.isAnswerListing = true;
-            currentSelectable = selectables.answerListing;
-        }
-        else if ($(selectables.questionListing.selector).length) {
-            info.isQuestionListing = true;
-            currentSelectable = selectables.questionListing;
-        } else {
-            for (var key in selectables) {
-                if (!selectables.hasOwnProperty(key) || /(?:question|answer)Listing/.test(key))
-                    continue;
-
-                if ($(selectables[key].selector).length) {
-                    currentSelectable = selectables[key];
-                    info["is" + key.charAt(0).toUpperCase() + key.substr(1)] = true;
-                    break;
-                }
-            }
-        }
-
-        if (forceSelectable) {
-            currentSelectable = forceSelectable;
-        }
-
-        if (currentSelectable)
-            currentSelectable.elements = $(currentSelectable.selector);
-
-        /* If the current site is a meta, then removing the "meta." is sufficient to find the address of
-         * the main site. If the current site is not a meta, then we check the last link in the footer
-         * (above the site list). If removing "meta." from that link gives us the current site, then
-         * we know we have found the "feedback" link pointing to the site's meta. Note that the feedback
-         * link may not exist at all (on child metas; in this case the link we find is the "contact"
-         * link), or it may point to a site that is not the current site's meta (as is the case on stackapps).
-         * Either case is handled fine here.
-         *
-         * *.meta.stackexchange.com does not exist at this time (see http://nickcraver.com/blog/2013/04/23/stackoverflow-com-the-road-to-ssl/
-         * for why it may come), but the script is future-proof by already handling it. */
-        var host = location.hostname;
-        if (/^meta\./.test(host) || /\.meta\.stackexchange\.com$/.test(host)) {
-            info.mainSiteLink = location.origin.replace(/(\/|\.)meta./, "$1");
-        } else {
-            var lastFooterLink = $("#footer-menu .top-footer-links a:last").attr("href");
-            if (lastFooterLink && lastFooterLink.replace(/^.*\/\//, "").replace(/(^|\.)meta./, "$1") == host)
-                info.metaSiteLink = lastFooterLink;
-        }
-
-        function toggleAutoHelp() {
-            var name = "disableAutoHelp",
-                current = setting(name);
-            setting(name, !current);
-            current = setting(name);
-            shortcuts.actions.H.name = (current ? "en" : "dis") + "able auto help";
-            resetDelayed = StackExchange.helpers.DelayedReaction(reset, current ? 2000 : 5000, { sliding: true })
-        }
-
-        function buildShortcuts() {
-            var G = new Shortcuts();
-
-            shortcuts.add("G", "go to", { next: G });
-            if (currentSelectable) {
-                shortcuts.add("U", "select " + (info.isQuestionPage ? "question" : "first " + currentSelectable.name), {
-                    func: function () { select(0, false, false, false, true); }
-                });
-                shortcuts.add("J", "select next " + currentSelectable.name, { func: function () { selectFlag(1); } });
-                shortcuts.add("K", "select prev " + currentSelectable.name, { func: function () { selectFlag(-1); } });
-                if (!info.isQuestionPage) {
-                    shortcuts.add("Enter", "go to selected " + currentSelectable.name, { clickOrLink: ".keyboard-selected a" + (currentSelectable.hrefOnly ? "[href]" : "") });
-                }
-            }
-
-            G.add("H", "home page", { url: "/"});
-            G.add("Q", "questions", { url: "/questions"});
-            G.add("T", "tags", { url: "/tags" });
-            G.add("U", "users", { url: "/users" });
-            G.add("B", "badges", { url: "/badges" });
-            G.add("N", "unanswered", { url: "/unanswered" });
-            G.add("A", "ask question", { link: "#nav-askquestion[href]" }); // it's not a real link on the ask page itself, so don't offer the shortcut there
-            G.add("P", "my profile", { link: ".profile-link,.profile-me" });
-            if (info.mainSiteLink)
-                G.add("M", "main site", { url: info.mainSiteLink });
-            else if (info.metaSiteLink)
-                G.add("M", "meta site", { url: info.metaSiteLink });
-            G.add("C", "chat", { link: "#footer-menu a:contains('chat')" });
-
-            var special = new Shortcuts();
-            if (TOP_BAR) {
-                special.add("R", "review", { link: ".topbar-menu-links a[href='/review/']" });
-                special.add("F", "flags", { link: ".topbar .mod-only .icon-flag" });
-            } else {
-                special.add("E", "suggested edits", { link: "#hlinks a.mod-flag-indicator.hotbg" });
-                special.add("F", "flags", { link: "#hlinks a.mod-flag-indicator.supernovabg" });
-                special.add("M", "mod", { link: "#hlinks a[href='/admin']" });
-                if ($("#hlinks a:contains('tools')").length) {
-                    special.add("R", "review", { url: "/review" });
-                    special.add("T", "tools", { url: "/tools" });
-                } else if ($("#hlinks a[href='/review/']").length) {
-                    special.add("R", "review", { url: "/review" });
-                }
-            }
-            G.add("S", "special pages", { next: special });
-
-            var inPageNav = new Shortcuts();
-
-            if (info.isQuestionPage)
-                buildQuestionPageShortcuts();
-            else if (info.isProfilePage) {
-                inPageNav.add("T", "tab", { next: getOrderShortcuts("#tabs") });
-                if (info.isQuestionListing && info.isAnswerListing) {
-                    inPageNav.add("Q", "questions", { func: function() {
-                        switchSelectable("questionListing");
-                    } });
-                    inPageNav.add("A", "answers", { func: function() {
-                        switchSelectable("answerListing");
-                    } });
-                }
-            }
-            else if (info.isQuestionListing)
-                shortcuts.add("O", "order questions by", { next: getOrderShortcuts("#tabs") });
-
-            shortcuts.add("N", "in-page navigation", { next: inPageNav });
-
-            G.add("F", "faq", { url: "/faq" });
-
-            if (TOP_BAR) {
-                shortcuts.add("I", "inbox",
-                    getTopBarDialogShortcut(".js-inbox-button", "Inbox item...", ".inbox-dialog", "li.inbox-item a")
-                );
-            } else {
-                shortcuts.add("I", "inbox", { func: beginInbox, noReset: true, initiatesMode: inboxMode });
-            }
-            if (TOP_BAR) {
-                shortcuts.add("R", "recent achievements",
-                    getTopBarDialogShortcut(".js-achievements-button", "Achievement...", ".achievements-dialog", "ul.js-items li a")
-                );
-                shortcuts.add("Q", "mod messages",
-                    getTopBarDialogShortcut(".js-mod-inbox-button", "Mod message...", ".modInbox-dialog", "li.inbox-item a")
-                );
-            } else {
-                shortcuts.add("R", "recent activity popup", {
-                    onlyIf: "#hlinks-user > .profile-triangle",
-                    func: function () { $("#hlinks-user > .profile-triangle").click(); animateScrollTo(0); }
-                });
-            }
-            shortcuts.add("F", "show freshly updated data", { click: ".new-post-activity, #new-answer-activity", reinit: true });
-            shortcuts.add("S", "search", { func: function () { $("#search input").focus(); } });
-            var P = getPagerShortcuts();
-            shortcuts.add("P", "page", { next: P });
-            shortcuts.add("?", "help", {
-                func: function () {
-                    if ($(".keyboard-console").is(":visible")) {
-                        reset();
-                        return;
-                    }
-                    var s = "MOD TOOLS\nKeyboard shortcuts:";
-                    if (updateMessage)
-                        s = updateMessage + "\n" + s;
-                    showHelp(s);
-                },
-                noReset: true,
-                unimportant: true
-            });
-            shortcuts.add("H", (setting("disableAutoHelp") ? "en" : "dis") + "able auto help", { func: toggleAutoHelp, unimportant: true } );
-        }
-
-        function getPagerShortcuts() {
-
-            var pagerSelector;
-            if (info.isQuestionPage) {
-                pagerSelector = ".pager-answers"
-            } else {
-                pagerSelector = "";
-                if (info.isQuestionListing && info.isAnswerListing)
-                    pagerSelector = { "question": "#questions-table ", "answer": "#answers-table " }[currentSelectable.name] || "";
-                pagerSelector += ".pager:first"
-            }
-
-            var result = new Shortcuts();
-            result.add("F", "first page", { clickOrLink: pagerSelector + " a[title='go to page 1']" });
-            result.add("P", "previous page", { clickOrLink: pagerSelector + " a[rel='prev']" });
-            result.add("N", "next page", { clickOrLink: pagerSelector + " a[rel='next']" });
-            result.add("L", "last page", { clickOrLink: pagerSelector + " .current ~ a:not([rel='next']):last" });
-            return result;
-        }
-
-        var sortOrderShortcuts = { featured: "B", bugs: "G" };
-        function getOrderShortcuts(selector) {
-            var result = new Shortcuts();
-            $(selector + " > a").each(function (i, elem) {
-                var text = $(elem).text().replace(/^\s*[\d*]*\s*|\s*$/g, ""),
-                    s = sortOrderShortcuts[text]; // TODO: This check needs to be made earlier, before looping. Otherwise, you may get double entries.
-
-                if (!s) {
-                    s = text.replace(/[^a-z]/ig, "").toUpperCase();
-
-                    while (s.length && result.actions[s.charAt(0)])
-                        s = s.substr(1);
-
-                    if (!s.length) {
-                        StackExchange.debug.log("no suitable shortcut for sort order " + text);
-                        return;
-                    }
-                }
-                result.add(s.charAt(0), text, { clickOrLink: elem });
-            });
-            return result;
-
-        }
-
-        function switchSelectable(name) {
-            var newSelectable = selectables[name];
-            if (newSelectable === currentSelectable)
-                return;
-            currentSelectable = newSelectable;
-            newSelectable.elements = $(newSelectable.selector);
-            $(".keyboard-selected").removeClass("keyboard-selected");
-            shortcuts.actions.P.next = getPagerShortcuts();
-            animateScrollTo(newSelectable.elements.first().offset().top - 100);
-        }
-
-        function selectedPostId() {
-            var post = $(".keyboard-selected");
-            if (post.is(".question")) {
-                return parseInt(location.pathname.replace(/^\/questions\/(\d+)\/.*$/, "$1"));
-            } else if (post.is(".answer")) {
-                return parseInt(post.attr("id").replace("answer-", ""));
-            } else {
-                return null;
-            }
-        }
-
-        function beginInbox() {
-            if (!$("#seWrapper").length) {
-                if ($("#portalLink .unreadCount").length)
-                    expectAjax(/\/inbox\/genuwine/, false).done(reset); // if there's a red number, the click goes directly to the inbox
-                else
-                    expectAjax(/stackexchange\.com\/genuwine/, true).done(assertInbox)
-
-                $("#portalLink a.genu").click();
-            } else {
-                if (!$("#seWrapper").is(":visible"))
-                    $("#portalLink a.genu").click();
-                assertInbox();
-            }
-            animateScrollTo(0);
-        }
-
-        function assertInbox() {
-            var def;
-            if (!$("#seContainerInbox").length)
-                def = expectAjax(/\/inbox\/genuwine/);
-            else
-                def = $.Deferred().resolve().promise();
-            $("#seTabInbox").click(); // Make sure it's the active tab. This is a no-op if it already is.
-            def.done(reset); // will detect inbox mode
-        }
-
-        function buildQuestionPageShortcuts() {
-            var V = new Shortcuts();
-            shortcuts.add("V", "vote", { next: V, autoSelect: true });
-            V.add("U", "up", { click: ".keyboard-selected .vote-up-off" });
-            V.add("D", "down", { click: ".keyboard-selected .vote-down-off" });
-            shortcuts.add("A", "answer", {
-                func: function () {
-                    var input = $("#wmd-input:visible");
-                    if (input.length)
-                        input.focus();
-                    else {
-                        $("#show-editor-button input").click();
-                        setTimeout(function () { $("#wmd-input:visible").focus(); }, 0); // if the user clicked "Ok" in the confirmation dialog, focus the input
-                    }
-                },
-                onlyIf: "#wmd-input"
-            });
-
-            if ($(".edit-post").length) // inline editing
-                shortcuts.add("E", "edit", { click: ".keyboard-selected .edit-post", autoSelect: true });
-            else
-                shortcuts.add("E", "edit", { link: ".keyboard-selected .post-menu a[href$='/edit']", autoSelect: true });
-
-            if ($("#edit-tags").length) // inline retagging
-                shortcuts.add("T", "retag", { click: "#edit-tags" });
-            else
-                shortcuts.add("T", "retag", { link: ".question .post-menu a[href$='?tagsonly=true']" });
-
-            shortcuts.add("C", "add/show comments", { click: ".keyboard-selected .comments-link", autoSelect: true });
-            shortcuts.add("L", "link", { click: ".keyboard-selected .post-menu a[id^='link-post-']", autoSelect: true });
-
-            var dismissAct = { click: "",
-                  autoSelect: true,
-                  initiatesMode: dismissMode
-            };
-            dismissAct.onlyIf = function()
-            {
-               var selector = "#" + $(".keyboard-selected").data("flag-bar") + " .dismiss-all";
-               dismissAct.click = selector;
-               return !!$(selector).length;
-            };
-            shortcuts.add("D", "dismiss flags", dismissAct);
-
-            var M = new Shortcuts();
-            shortcuts.add("M", "moderate", { next: M, autoSelect: true });
-            M.add("F", "flag", { click: ".keyboard-selected a[id^='flag-post-'], .keyboard-selected .flag-post-link", initiatesMode: popupMode });
-            M.add("C", "close", { click: ".keyboard-selected a[id^='close-question-'], .keyboard-selected .close-question-link", initiatesMode: popupMode });
-            M.add("B", "belongs on... (migrate)", { click: "#postflag-bar .migration-link" });
-            M.add("D", "delete", { click: ".keyboard-selected a[id^='delete-post-']" });
-            M.add("E", "suggested edit", { click: ".keyboard-selected a[id^='edit-pending-']" });
-            M.add("M", "moderation tools", { click: ".keyboard-selected a.post-moderator-link", initiatesMode: popupMode });
-            shortcuts.actions.G.next.add("O", "post owner's profile", { link: ".keyboard-selected .post-signature:last .user-details a[href^='/users/']" });
-            shortcuts.actions.G.next.add("R", "post revisions", {
-                func: function (evt) { goToPage("/posts/" + selectedPostId() + "/revisions", evt.shiftKey); },
-                onlyIf: ".keyboard-selected"
-            });
-            shortcuts.add("O", "order answers by", { next: getOrderShortcuts("#tabs") });
-        }
-
-        function actionIsAvailable(action) {
-
-            var onlyIf, o;
-
-            if (action.hasOwnProperty("onlyIf")) {
-                onlyIf = action.onlyIf;
-            } else {
-                if (action.autoSelect && !$(".keyboard-selected").length) {
-                    select(1, false, true, true); //TODO: an options object may be in order...
-                    setTimeout(function () { $(".keyboard-selected").removeClass("keyboard-selected"); }, 0);
-                }
-                if (action.clickOrLink)
-                    onlyIf = function () { return $(action.clickOrLink).length; };
-                else
-                    onlyIf = action.link || action.click
-            }
-
-            if (onlyIf) {
-                o = onlyIf;
-                if (typeof onlyIf === "string")
-                    onlyIf = function () { return $(o).length };
-                else if (typeof onlyIf !== "function")
-                    onlyIf = function () { return o; };
-            }
-
-            if (onlyIf && !onlyIf())
-                return false;
-
-            if (action.next) {
-                for (var i = 0; i < action.next.order.length; i++) {
-                    if (actionIsAvailable(action.next.actions[action.next.order[i]])) {
-                        return true;
-                    }
-                }
-                return false;
-            }
-
-            return true;
-        }
-
-        function selectFlag(delta)
-        {
-           // if on the first/last flagged post here, move to the next one in the filtered list
-           if ( (delta > 0 && $(currentSelectable.selector).last().is(".keyboard-selected"))
-            || (delta < 0 && $(currentSelectable.selector).first().is(".keyboard-selected")) )
-           {
-              goToFilteredFlag(delta);
-              return;
-           }
-
-           select(delta, false);
-        }
-
-        function select(delta, visibleOnly, onlyIfNothingYet, tempOnly, absolute) {
-            if (!currentSelectable)
-                return;
-
-            if (!currentSelectable.elements) {
-                currentSelectable.elements = $(currentSelectable.selector);
-            }
-
-            if (!currentSelectable.elements.length)
-                return;
-
-            var jWin = $(window),
-                windowTop = jWin.scrollTop(),
-                windowHeight = jWin.height(),
-                windowBottom = windowTop + windowHeight,
-                visibleChoices, choices,
-                currentIndex, nextIndex,
-                selected = $(".keyboard-selected"),
-                newSelected,
-                above, below, spaceFactor,
-                cycling = visibleOnly,
-                newTop, newHeight, newScroll;
-
-            if (selected.length && onlyIfNothingYet)
-                return;
-
-            if (visibleOnly || (!selected.length && !absolute)) {
-                visibleChoices = currentSelectable.elements.filter(function () {
-                    var jThis = $(this),
-                        thisTop = jThis.offset().top,
-                        thisHeight = jThis.height(),
-                        thisBottom = thisTop + thisHeight,
-                        intersection = Math.max(0, Math.min(thisBottom, windowBottom) - Math.max(thisTop, windowTop));
-
-                    if (intersection >= 50)
-                        return true;
-
-                    if (intersection / thisHeight >= .5) // more than half of this is visible
-                        return true;
-
-                    // Note that at this point, we've deemed the element invisble.
-                    // Remember the closest selectable item above and below, in case we need them.
-                    if (thisTop < windowTop)
-                        above = jThis;
-                    else if (thisBottom > windowBottom && !below)
-                        below = jThis;
-                    return false;
-                });
-            }
-
-            choices = visibleOnly ? visibleChoices : currentSelectable.elements;
-            if (absolute) {
-                newSelected = choices.eq(delta);
-            } else if (selected.length) {
-                currentIndex = choices.index(selected);
-                if (currentIndex === -1 && delta < 0)
-                    currentIndex = 0;
-                if (cycling)
-                    nextIndex = (currentIndex + delta + choices.length) % choices.length;
-                else
-                    nextIndex = Math.max(0, Math.min(currentIndex + delta, choices.length - 1));
-                newSelected = choices.eq(nextIndex);
-            } else {
-                if (visibleChoices.length)
-                    newSelected = delta < 0 ? visibleChoices.last() : visibleChoices.first();
-                else if (!visibleOnly) // forcibly pick one if we're not in visibleOnly mode
-                    newSelected = delta < 0 ? above || below : below || above;
-            }
-
-            if (!(newSelected && newSelected.length))
-                return;
-
-            selected.removeClass("keyboard-selected");
-            newSelected.addClass("keyboard-selected")
-
-            // adjust scrolling position
-            if (!tempOnly && !visibleOnly) {
-               var selectEl = newSelected;
-               // for questions, make sure the title is shown - always at the top, so no need to worry about height
-               if ( selectEl.is("#question") )
-                  selectEl = $("#question-header");
-
-                newTop = selectEl.offset().top;
-                newHeight = selectEl.height();
-
-                if (newTop >= windowTop && newTop + newHeight < windowBottom) // fully visible -- all is well
-                    return;
-
-                if (newHeight > windowHeight) { // too large to fit the screen -- show as much as possible
-                    animateScrollTo(newTop);
-                    return;
-                }
-
-                spaceFactor = Math.max(.9, newHeight / windowHeight);
-
-                if (delta < 0) // going upwards; put the bottom at 10% from the window bottom
-                    newScroll = newTop + newHeight - spaceFactor * windowHeight;
-                else // going downwards; put the top at 15% from the window top
-                    newScroll = newTop - (1 - spaceFactor) * windowHeight;
-
-                animateScrollTo(newScroll);
-            }
-
-        }
-
-        function showHelp(title) {
-            var s = title + "\n",
-                anyAutoSel = false,
-                hasSel = $(".keyboard-selected").length,
-                key, action;
-            for (var i = 0; i < currentLevel.order.length; i++) {
-                key = currentLevel.order[i];
-                action = currentLevel.actions[key];
-                if (!actionIsAvailable(action))
-                    continue;
-
-                s += (action.unimportant ? "" : "!") + "<kbd>" + key + "</kbd> " + action.name;
-
-                if (!hasSel && action.autoSelect) {
-                    s += "*";
-                    anyAutoSel = true;
-                }
-                if (action.next)
-                    s += "...";
-                s += "\n";
-            }
-            if (!currentLevel.order.length)
-                s += "(no shortcuts available)"
-            if (anyAutoSel)
-                s += "*auto-selects if nothing is selected"
-            showConsole(s)
-        }
-
-        function checkAnimation(jElem) {
-            jElem.each(function () {
-                var jThis = $(this),
-                    queue = jThis.queue("fx");
-                if (queue && queue.length)
-                jThis.queue("fx", function (next) {
-                    setTimeout(reset, 0);
-                    next();
-                });
-            });
-        }
-
-        function resetMode() {
-            currentMode = null;
-        }
-
-        function resetModeIfNotApplicable() {
-            if (currentMode && ! currentMode.isApplicable())
-                resetMode();
-        }
-
-        function resetToDefault() {
-            currentLevel = shortcuts;
-            showConsole("");
-            resetDelayed.cancel();
-        }
-
-        function reset() {
-            var mode = getCurrentMode();
-            if (!mode) {
-                resetToDefault();
-                return;
-            }
-            currentLevel = mode.getShortcuts();
-            if (!setting("disableAutoHelp"))
-                showHelp(mode.name);
-            resetDelayed.cancel();
-            if (currentLevel.animated)
-                checkAnimation(currentLevel.animated);
-        }
-
-        var resetDelayed = StackExchange.helpers.DelayedReaction(reset, setting("disableAutoHelp") ? 2000 : 5000, { sliding: true });
-
-        function keyDescription(code) {
-            if (code === 13)
-                return "Enter";
-
-            return String.fromCharCode(code).toUpperCase();
-        }
-
-        var handleResults = {
-            notHandled: 0,
-            handled: 1,
-            handledNoReset: 2,
-            handledResetNow: 3,
-            handledReinitNow: 4
-        }
-
-        function goToPage(url, newTab) {
-            if (newTab)
-                window.open(url);
-            else
-                location.href = url;
-        }
-
-        function handleKey(evt) {
-            if (evt.ctrlKey || evt.altKey || evt.metaKey)
-                return handleResults.notHandled;
-
-            if ($(evt.target).is("textarea, input[type='text'], input[type='url'], input[type='email'], input[type='password'], input:not([type])")) // default type is text, so if no type is set, it's a textbox as well
-                return handleResults.notHandled;
-
-            var action = currentLevel.actions[keyDescription(evt.which)],
-                onlyIf;
-
-            if (!action) {
-                return handleResults.notHandled;
-            }
-
-            var handled =
-                    action.reinit ? handleResults.handledReinitNow :
-                    action.noReset ? handleResults.handledNoReset :
-                    action.next ? handleResults.handled :
-                    handleResults.handledResetNow;
-
-            if (action.autoSelect)
-                select(1, true, true);
-
-            if (!actionIsAvailable(action)) {
-                return handleResults.notHandled;
-            }
-
-            if (action.initiatesMode) {
-                currentMode = action.initiatesMode;
-            }
-
-            var link = action.url || $(action.link).attr("href");
-
-            if (link) {
-                goToPage(link, evt.shiftKey)
-                return handled;
-            }
-
-            if (action.click) {
-                $(action.click).click();
-                return handled;
-            }
-
-            if (action.clickOrLink) {
-                var jElem = $(action.clickOrLink),
-                    evData = $._data(jElem.get(0), "events"),
-                    doClick = false;
-                if (evData && evData.click && evData.click.length) // click handler bound?
-                    doClick = true;
-                else {
-                    evData = $._data(document, "events"); // live handler bound? (note that the generic delegate case is *not* checked)
-                    if (evData && evData.click) {
-                        for (var i = 0; i < evData.click.length; i++) {
-                            var sel = evData.click[i].selector;
-                            if (sel && jElem.is(sel)) {
-                                doClick = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if (doClick)
-                    jElem.click();
-                else
-                    goToPage(jElem.attr("href"), evt.shiftKey)
-                return handled;
-            }
-
-            if (action.next) {
-                var title = action.name + "...";
-                currentLevel = action.next;
-                if (!setting("disableAutoHelp"))
-                    showHelp(title);
-
-                return handled;
-            }
-
-            if (action.func) {
-                action.func(evt);
-                return handled;
-            }
-
-            StackExchange.debug.log("action found, but nothing to do")
-        }
-
-        var keyHappening = false;
-
-        var keydown = function () { keyHappening = true; };
-
-        var keyup = function (e) {
-            if (e.which === 27) {
-                resetMode();
-                resetToDefault();
-            }
-            else if (keyHappening) // didn't generate a keypress event
-                reset();
-            keyHappening = false;
-        };
-
-        var keypress = function (evt) {
-            keyHappening = false;
-            var result = handleKey(evt);
-            switch(result) {
-                case handleResults.notHandled:
-                    resetModeIfNotApplicable();
-                    reset();
-                    return true;
-                case handleResults.handled:
-                    resetDelayed.trigger();
-                    return false;
-                case handleResults.handledResetNow:
-                    reset();
-                    return false;
-                case handleResults.handledNoReset:
-                    resetDelayed.cancel();
-                    return false;
-                case handleResults.handledReinitNow:
-                    reinit();
-                    return false;
-            }
-        };
-
-        var click = function (evt) {
-            if (typeof evt.which === "undefined") // not a real click;
-                return;
-            resetMode();
-            reset();
-        }
-
-        $(document).keydown(keydown);
-        $(document).keyup(keyup);
-        $(document).keypress(keypress);
-        $(document).click(click);
-
-        buildShortcuts();
-
-        reset();
-
-        // select first flagged post
-        if ( $(".question:data(flag-bar), .answer:data(flag-bar)").length )
-         select(0, false, true, false, true);
-
-        return {
-            getSelectable: function() { return currentSelectable; },
-            cancel: function () {
-                $(document).unbind("keydown", keydown);
-                $(document).unbind("keyup", keyup)
-                $(document).unbind("keypress", keypress)
-                $(document).unbind("click", click)
-            },
-            reset: reset
-        };
-    }
-
-    var scroller = {};
-    function animateScrollTo(target) {
-        var jWin = $(window);
-        scroller.pos = jWin.scrollTop();
-        $(scroller).stop().animate({pos: target}, {
-            duration: 200,
-            step: function () { jWin.scrollTop(this.pos) },
-            complete: function () { jWin.scrollTop(target); }
-        });
-    }
-
-    var expected = [];
-
-    function expectAjax(urlRe, crossDomain) {
-        var result = $.Deferred();
-        var data = { re: urlRe, deferred: result, crossDomain: crossDomain };
-        if (crossDomain) {
-            // hack: jQuery doesn't fire ajaxComplete on crossdomain requests, so we gotta cheat
-            var prevScripts = $("head > script");
-            setTimeout(function () {
-                var nowScripts = $("head > script");
-                if (nowScripts.length !== prevScripts.length + 1) { // currently this is fine, since our only use case only loads one
-                    StackExchange.debug.log("I'm confused: " + nowScripts.length + "!=" + prevScripts.length +"+1" );
-                    return;
-                }
-                var script = nowScripts.eq(0); // jQuery uses insertBefore
-                if (!urlRe.test(script.attr("src"))) {
-                    StackExchange.debug.log("I'm even more confused");
-                    return;
-                }
-                script.on("load", function () { result.resolve(); });
-            },0)
-        } else {
-            expected.push(data);
-        }
-        return result.promise();
-    }
-    function checkExpected(url) {
-        var newExpected = [],
-            i, result = false;
-        for (i = 0; i < expected.length; i++) {
-            var exp = expected[i];
-            if (exp.re.test(url)) {
-                exp.deferred.resolve();
-                result = true;
-            } else {
-                newExpected.push(exp);
-            }
-        }
-        expected = newExpected;
-        return result;
-    }
-
-    function ajaxNeedsReinit(url) {
-        return /users\/stats\/(questions|answers)|posts\/\d+\/ajax-load-mini|posts\/ajax-load-realtime/.test(url);
-    }
-    function ajaxNeedsNoReset(url) {
-        return /mini-profiler-results|users\/login\/global|\.js/.test(url)
-    }
-
-    var state = init();
-    $(document).ajaxComplete(function (evt, xhr, settings) {
-        if (!checkExpected(settings.url)) {
-            if (ajaxNeedsReinit(settings.url))
-                reinit();
-            else if (!ajaxNeedsNoReset(settings.url))
-                state.reset();
-        }
-    })
-
-    $(document).on("click", ".new-post-activity", reinit);
-
-    function reinit() {
-        state.cancel();
-        state = init(state.getSelectable());
-    }
 
 }
 
