@@ -15,6 +15,11 @@
 // @include       http*://meta.mathoverflow.net/*
 // @include       http*://*.stackexchange.com/*
 // ==/UserScript==
+
+if (!StackExchange.options.user.isModerator)
+{
+   return;
+}
  
 var baseUrl = "https://shog9.github.io/flagfilter/";
 
