@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          FlagFilter
 // @namespace  http://rubberduck.echoreply.us/
-// @version       2.3
+// @version       2.4
 // @include       http*://stackoverflow.com/*
 // @include       http*://meta.stackoverflow.com/*
 // @include       http*://dev.stackoverflow.com/*
@@ -16,7 +16,12 @@
 // @include       http*://*.stackexchange.com/*
 // ==/UserScript==
 
-if (!StackExchange.options.user.isModerator)
+// this serves only to avoid embarassing mistakes caused by inadvertently loading this script onto a page that isn't a Stack Exchange page
+var isSEsite = false;
+for (var s of document.querySelectorAll("script")) isSEsite = isSEsite||/StackExchange\.ready\(/.test(s.textContent);
+
+// don't bother running this if the user isn't a moderator on the current site
+if (!isSEsite || typeof StackExchange === "undefined" || !StackExchange.options.user.isModerator)
 {
    return;
 }
