@@ -15,6 +15,15 @@
 // @exclude       http*://chat.*.com/*
 // ==/UserScript==
 
+// this serves only to avoid embarassing mistakes caused by inadvertently loading this script onto a page that isn't a Stack Exchange page
+var isSEsite = false;
+for (var s of document.querySelectorAll("script")) isSEsite = isSEsite||/StackExchange\.ready\(/.test(s.textContent);
+
+// don't bother running this if the user isn't a moderator on the current site
+if (!isSEsite || typeof StackExchange === "undefined" || !StackExchange.options.user.isModerator)
+{
+   return;
+}
 
 function with_jquery(f) 
 {
