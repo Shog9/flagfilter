@@ -520,8 +520,8 @@ function initQuestionPage()
       if (activeCount > 0)
       {
          modActions.prepend(`
-<input class="flag-dismiss-all" type="button" value="no further action…" title="dismiss any moderator / spam / rude / abusive flags on this post">
-<!-- <input class="flag-delete-with-comment" type="button" value="delete with comment…" title="deletes this post with a comment the owner will see, as well as marking all flags as helpful"> -->
+<input class="flag-dismiss-all" type="button" value="no further actionâ€¦" title="dismiss any moderator / spam / rude / abusive flags on this post">
+<!-- <input class="flag-delete-with-comment" type="button" value="delete with commentâ€¦" title="deletes this post with a comment the owner will see, as well as marking all flags as helpful"> -->
 `);
       }
 
@@ -617,7 +617,7 @@ function initQuestionPage()
       let flagItem = $(`<li>
              <span class="flag-text revision-comment ${flag.active ? 'active-flag' : 'blur'}">${flag.description}</span>
              <span class="flag-info" data-flag-id="${flag.flagId||''}" data-flag-ids="${flag.flagIds ? flag.flagIds.join(';') : ''}">
-                 –
+                 â€“
                 <span class="flaggers"></span>
                  <a class="flag-dismiss delete-tag" title="dismiss this flag"></a>
              </span>
@@ -626,7 +626,7 @@ function initQuestionPage()
       if (flag.result)
       {
          $("<div class='flag-outcome'><i></i></div>")
-               .find("i").text(flag.result + " – ").end()
+               .find("i").text(flag.result + " â€“ ").end()
             .append(flag.resultUser ? `<a href="/users/${flag.resultUser.userId}" class="flag-creation-user comment-user">${flag.resultUser.name}</a>` : '')
             .append(`<span class="flag-creation-date comment-date" dir="ltr"> <span title="${flag.resultDate.toISOString()}" class="relativetime-clean">${flag.resultDate.toLocaleDateString(undefined, {year: "2-digit", month: "short", day: "numeric", hour: "numeric", minute: "numeric", hour12: false, timeZone: "UTC"})}</span></span>`)
             .appendTo(flagItem);
