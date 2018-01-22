@@ -48,7 +48,12 @@ function initStyles()
 
    var flagStyles = document.createElement("style");
    flagStyles.textContent = `
-   #postflag-bar { display: none; }
+   #postflag-bar 
+   { 
+      display: none; 
+      background-color: rgba( 239,240,241, 0.75);
+      opacity: 1;
+   }
    
    .flagToC
    {
@@ -64,11 +69,35 @@ function initStyles()
       padding: 4px;
       width:15em;
       float:left;
+      box-shadow: 0 0 8px rgba(214,217,220,.7);
+      margin: 4px;
+      border-radius: 4px;
+      background-color: #fff;
    }
    
-   .flagToC>li>ul {}
-   .flagToC>li>ul>li {}
+   .flagToC>li ul 
+   {
+      margin: 0px;
+      padding: 0px;      
+   }
+   .flagToC>li ul>li::before
+   {
+      content: attr(data-count);
+      color: #6A7E7C;
+      padding-right: 1em;
+   }
+   .flagToC>li ul>li 
+   {
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+   }
    
+   .flagToC>li ul>li.inactive
+   {
+      color: #6A7E7C;
+   }
+      
    /* this used to live in moderator.less... Then balpha killed it. But at least there was poetry.
       (just in case you were curious about the presence of K&R braces) */
    .mod-tools .mod-tools-post, .mod-tools .mod-tools-comment > td:first-child {
@@ -169,7 +198,7 @@ function initTools()
             .toLocaleDateString(undefined, {year: "numeric", month: "short", day: "numeric", timeZone: "UTC"});
       },
 
-      dismissAllCommentFlags: function(commentId, flagId)
+      dismissAllCommentFlags: function(commentId, flagIds)
       {
          // although the UI implies it's possible, we can't currently dismiss individual comment flags
         return $.post('/admin/comment/' + commentId+ '/clear-flags', {fkey:StackExchange.options.user.fkey});
@@ -308,26 +337,7 @@ function initQuestionPage()
    
    var flagCache = {};
    GetFlagInfoFromWaffleBar();
-
-   var flagToC = $("<ul class='flagToC'>");
-   for (let postId in flagCache) 
-   {
-      let post = $(".answer[data-answerid='"+postId+"'],.question[data-questionid='"+postId+"']"),
-         postType = post.is(".answer") ? "answer" : "question",
-         userLink = post.find(".user-details a[href^='/users/']:last,.user-details #history-"+postId),
-         authorName = userLink.is('#history-'+postId) ? '(wiki)' : userLink.text(); 
-      if ( !post.length ) continue; // TODO: handle flags spanning multiple pages of answers
-       let entry = $("<li>");
-       let details = $("<ul>"),
-         activeFlagCount = flagCache[postId].flags.filter(f => f.active).length,
-           activeCommentFlagCount = flagCache[postId].commentFlags.filter(f => f.active).length;
-       if ( activeFlagCount ) details.append($("<li>").text(activeFlagCount + " flags"));
-       if ( activeCommentFlagCount ) details.append($("<li>").text(activeCommentFlagCount + " comment flags"));
-       entry.append($("<a>").attr("href", postType == 'question' ? '#question' : "#" + postId).text(postType + " by " + authorName).append(details));
-       flagToC.append(entry);
-   }
-   $('#postflag-bar .flag-wrapper').replaceWith(flagToC);
-   $('#postflag-bar').show();
+   RenderToCInWaffleBar();
       
    // depending on when this gets injected, these *may* already be loaded
    if ( $(".post-issue-display").length )
@@ -372,12 +382,12 @@ function initQuestionPage()
             ev.preventDefault();
 
             var commentId = $(this).parents(".comment").attr("id").match(/comment-(\d+)/)[1];
-            var flagId = $(this).parents(".flag-info").data("flag-id");
+            var flagIds = $(this).parents(".flag-info").data("flag-ids");
             var flagListItem = $(this).parents(".flag-info").parent();
             if ( !commentId || !flagListItem.length )
                return;
 
-            FlagFilter.tools.dismissAllCommentFlags(commentId, flagId)
+            FlagFilter.tools.dismissAllCommentFlags(commentId, flagIds)
                .done(function() { flagListItem.hide('medium'); });
          })
 
@@ -522,14 +532,14 @@ function initQuestionPage()
       if (activeCount > 0)
       {
          modActions.prepend(`
-<input class="flag-dismiss-all" type="button" value="no further actionâ€¦" title="dismiss any moderator / spam / rude / abusive flags on this post">
-<!-- <input class="flag-delete-with-comment" type="button" value="delete with commentâ€¦" title="deletes this post with a comment the owner will see, as well as marking all flags as helpful"> -->
+<input class="flag-dismiss-all" type="button" value="no further action…" title="dismiss any moderator / spam / rude / abusive flags on this post">
+<!-- <input class="flag-delete-with-comment" type="button" value="delete with comment…" title="deletes this post with a comment the owner will see, as well as marking all flags as helpful"> -->
 `);
       }
-
+ 
       var totalFlags = tools.data("totalflags");
       if (postFlags.flags.length)
-      {
+      { 
          let flagSummaryText = [];
          if (activeCount > 0) flagSummaryText.push(activeCount + " active flags");
          if (activeCount < postFlags.flags.length) flagSummaryText.push((postFlags.flags.length - activeCount) + " resolved flags");
@@ -618,7 +628,7 @@ function initQuestionPage()
    {
       let flagItem = $(`<li>
              <span class="flag-text revision-comment ${flag.active ? 'active-flag' : 'blur'}">${flag.description}</span>
-             <span class="flag-info" data-flag-id="${flag.flagId||''}" data-flag-ids="${flag.flagIds ? flag.flagIds.join(';') : ''}">
+             <span class="flag-info" data-flag-ids="${flag.flagIds ? flag.flagIds.join(';') : ''}">
                  –
                 <span class="flaggers"></span>
                  <a class="flag-dismiss delete-tag" title="dismiss this flag"></a>
@@ -652,6 +662,60 @@ function initQuestionPage()
          flagItem.find(".flaggers").append(flaggerNames.join(", "));
       }
       return flagItem;
+   }
+   
+   function RenderToCInWaffleBar()
+   {
+      var flagToC = $("<ul class='flagToC'>");
+      for (let postId in flagCache) 
+      {
+         let post = $(".answer[data-answerid='"+postId+"'],.question[data-questionid='"+postId+"']"),
+            postType = post.is(".answer") ? "answer" : "question",
+            userLink = post.find(".user-details a[href^='/users/']:last,.user-details #history-"+postId),
+            authorName = userLink.is('#history-'+postId) ? '(wiki)' : userLink.text(); 
+         if ( !post.length ) continue; // TODO: handle flags spanning multiple pages of answers
+         let flagSummaries = SummarizeFlags(flagCache[postId], 3).map(function(summary)
+         {
+            var ret = $(`<li data-count='${summary.count}&times;'>`);
+            ret.attr("title", summary.description);
+            if ( !summary.active )
+               ret.addClass("inactive");
+            if ( summary.type == 'comment' )
+               $("<a>").attr("href", "#comments-"+postId).text("(comment) " + summary.description).appendTo(ret);
+            else
+               ret.text(summary.description);
+            return ret;
+         });
+         let entry = $("<li>");
+         entry.append($("<a>")
+            .attr("href", postType == 'question' ? '#question' : "#" + postId)
+            .text(postType + " by " + authorName)
+            .append($("<ul>").append(flagSummaries))
+         );
+         
+         flagToC.append(entry);
+      }
+      $('#postflag-bar .flag-wrapper').replaceWith(flagToC);
+      $('#postflag-bar').show();
+
+      function SummarizeFlags(flaggedPost, maxEntries)
+      {
+         var flags = flaggedPost.flags.concat(Object.values(flaggedPost.commentFlags.filter(cf => cf.active).reduce(function(acc, cf)
+            {
+               var composite = acc[cf.description] || {commentId: -1, description: cf.description, flaggers: [], active: true};
+               composite.flaggers.push.apply(composite.flaggers, cf.flaggers.length ? cf.flaggers : ["unknown"]);
+               acc[cf.description] = composite;
+               return acc;
+            }, {}))
+         );
+         maxEntries = maxEntries < 0 ? flags.length : maxEntries||3;
+         var ordered = flags.sort((a,b) => b.active-a.active || b.flaggers.length-a.flaggers.length || b.description.length-a.description.length);
+         var ret = ordered.slice(0,maxEntries-1||1)
+            .map(f => ({count: f.flaggers.length||1, description: f.description, active: f.active, type: f.commentId ? 'comment' : 'post'}));
+         if ( ordered.length >= maxEntries && maxEntries > 1)
+            ret.push({count: ordered.filter(f => f.active).slice(maxEntries-1).reduce((acc, f) => (f.flaggers.length||1) + acc, 0), description: " more...", type: 'more'});
+         return ret;
+      }
    }
 
    function LoadAllFlags(postId)
@@ -688,7 +752,7 @@ function initQuestionPage()
 
                      ret.commentFlags.push(
                      {
-                        flagId: id,
+                        flagIds: [id],
                         commentId: comment.data("eventid"),
                         description: $.trim(description.html()) || $.trim(flagType.text()),
                         active: !deleted.length,
@@ -735,6 +799,43 @@ function initQuestionPage()
 
                   }
                });
+               
+            // consolidate identical flags
+            ret.flags = Object.values(ret.flags.reduce( function(acc, f)
+               {
+                  var composite = acc[f.description] || {
+                     description: f.description, 
+                     active: f.active,
+                     result: f.result,
+                     resultDate: f.resultDate,
+                     resultUser: f.resultUser,
+                     flaggers: [], 
+                     flagIds: [] };
+                  composite.active = composite.active || f.active;
+                  composite.flaggers.push.apply(composite.flaggers, f.flaggers.map(u => Object.assign({}, u, {active: f.active})));
+                  composite.flagIds.push.apply(composite.flagIds, f.flagIds);
+                  acc[f.description] = composite;
+                  return acc;
+               }, {}) );
+               
+            // consolidate identical flags on the same comment
+            ret.commentFlags = Object.values(ret.commentFlags.reduce( function(acc, f)
+               {
+                  var composite = acc[f.commentId + f.description] || {
+                     commentId: f.commentId,
+                     description: f.description, 
+                     active: f.active,
+                     result: f.result,
+                     resultDate: f.resultDate,
+                     resultUser: f.resultUser,
+                     flaggers: [], 
+                     flagIds: [] };
+                  composite.active = composite.active || f.active;
+                  composite.flaggers.push.apply(composite.flaggers, f.flaggers.map(u => Object.assign({}, u, {active: f.active})));
+                  composite.flagIds.push.apply(composite.flagIds, f.flagIds);
+                  acc[f.commentId + f.description] = composite;
+                  return acc;
+               }, {}) );
 
             flagCache[postId] = ret;
 
@@ -743,6 +844,10 @@ function initQuestionPage()
    }
 
 
+   // 
+   // this should be considered incomplete AT BEST
+   // The truth is, the flag bar intentionally omits some information (full list of flaggers, comment flaggers) 
+   // and is incorrect in regard to some other information (showing active flags as inactive in cases where a flag has been handled)
    function GetFlagInfoFromWaffleBar()
    {
       flagCache = flagCache||{};
@@ -771,11 +876,11 @@ function initQuestionPage()
                            {
                               var userId = this.href.match(/\/users\/([-\d]+)/);
                               return {
-                                 id: userId && userId.length > 0 ? +userId[1] : null,
+                                 userId: userId && userId.length > 0 ? +userId[1] : null,
                                  name: this.textContent,
                                  flagCreationDate: new Date($(this)
                                     .next(".relativetime")
-                                    .attr('title') || Date.now())
+                                    .attr('title') || new Date())
                               };
                            })
                            .toArray()
@@ -783,18 +888,19 @@ function initQuestionPage()
                   })
                   .toArray(),
 
-               commentFlags: fp.find("table.comments tr")
+               commentFlags: fp.find("table.comments tr .flagcount")
                   .map(function()
                   {
-                     var flag = $(this);
-                     var commentId = flag.attr("class")
+                     var flaggedComment = $(this).closest("tr");
+                     var commentId = flaggedComment.attr("class")
                         .match(/comment-flagged-(\d+)/);
                      if (!commentId || commentId.length < 2) return;
                      return {
                         commentId: +commentId[1],
                         active: true,
-                        description: $.trim(flag.find(".revision-comment")
-                           .html())
+                        description: $.trim($(this).next(".revision-comment")
+                           .html()),
+                        flaggers: Array(+$(this).text()).fill({userId: null, name: "", flagCreationDate: new Date()})
                      };
                   })
                   .toArray()
