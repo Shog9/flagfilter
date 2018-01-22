@@ -3,7 +3,7 @@
 // @description   Implement https://meta.stackexchange.com/questions/305984/suggestions-for-improving-the-moderator-flag-overlay-view/305987#305987
 // @author        Shog9
 // @namespace     https://github.com/Shog9/flagfilter/
-// @version       0.1
+// @version       0.2
 // @include       http*://stackoverflow.com/questions/*
 // @include       http*://*.stackoverflow.com/questions/*
 // @include       http*://dev.stackoverflow.com/questions/*
@@ -38,7 +38,6 @@ with_jquery(function()
 {
    FlagFilter = {};
 
-
    initStyles();
    initTools();
    initQuestionPage();
@@ -49,6 +48,8 @@ function initStyles()
 
    var flagStyles = document.createElement("style");
    flagStyles.textContent = `
+   #postflag-bar { display: none; }
+   
    .flagToC
    {
       list-style-type: none;
@@ -68,8 +69,8 @@ function initStyles()
    .flagToC>li>ul {}
    .flagToC>li>ul>li {}
    
-   // this used to live in moderator.less... Then balpha killed it. But at least there was poetry.
-   // (just in case you were curious about the presence of K&R braces)
+   /* this used to live in moderator.less... Then balpha killed it. But at least there was poetry.
+      (just in case you were curious about the presence of K&R braces) */
    .mod-tools .mod-tools-post, .mod-tools .mod-tools-comment > td:first-child {
      border-left: 8px solid #DB5D5D;
    }
@@ -313,8 +314,8 @@ function initQuestionPage()
    {
       let post = $(".answer[data-answerid='"+postId+"'],.question[data-questionid='"+postId+"']"),
          postType = post.is(".answer") ? "answer" : "question",
-         userLink = post.find(".user-details a[href^='/users/']:last"),
-         authorName = userLink.text(); 
+         userLink = post.find(".user-details a[href^='/users/']:last,.user-details #history-"+postId),
+         authorName = userLink.is('#history-'+postId) ? '(wiki)' : userLink.text(); 
       if ( !post.length ) continue; // TODO: handle flags spanning multiple pages of answers
        let entry = $("<li>");
        let details = $("<ul>"),
@@ -325,7 +326,8 @@ function initQuestionPage()
        entry.append($("<a>").attr("href", postType == 'question' ? '#question' : "#" + postId).text(postType + " by " + authorName).append(details));
        flagToC.append(entry);
    }
-   $('#postflag-bar .flag-wrapper').replaceWith(flagToC);      
+   $('#postflag-bar .flag-wrapper').replaceWith(flagToC);
+   $('#postflag-bar').show();
       
    // depending on when this gets injected, these *may* already be loaded
    if ( $(".post-issue-display").length )
@@ -617,7 +619,7 @@ function initQuestionPage()
       let flagItem = $(`<li>
              <span class="flag-text revision-comment ${flag.active ? 'active-flag' : 'blur'}">${flag.description}</span>
              <span class="flag-info" data-flag-id="${flag.flagId||''}" data-flag-ids="${flag.flagIds ? flag.flagIds.join(';') : ''}">
-                 â€“
+                 –
                 <span class="flaggers"></span>
                  <a class="flag-dismiss delete-tag" title="dismiss this flag"></a>
              </span>
@@ -626,7 +628,7 @@ function initQuestionPage()
       if (flag.result)
       {
          $("<div class='flag-outcome'><i></i></div>")
-               .find("i").text(flag.result + " â€“ ").end()
+               .find("i").text(flag.result + " – ").end()
             .append(flag.resultUser ? `<a href="/users/${flag.resultUser.userId}" class="flag-creation-user comment-user">${flag.resultUser.name}</a>` : '')
             .append(`<span class="flag-creation-date comment-date" dir="ltr"> <span title="${flag.resultDate.toISOString()}" class="relativetime-clean">${flag.resultDate.toLocaleDateString(undefined, {year: "2-digit", month: "short", day: "numeric", hour: "numeric", minute: "numeric", hour12: false, timeZone: "UTC"})}</span></span>`)
             .appendTo(flagItem);
