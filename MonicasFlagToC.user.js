@@ -638,8 +638,8 @@ function initQuestionPage()
       if (flag.result)
       {
          $("<div class='flag-outcome'><i></i></div>")
-               .find("i").text(flag.result + " – ").end()
-            .append(flag.resultUser ? `<a href="/users/${flag.resultUser.userId}" class="flag-creation-user comment-user">${flag.resultUser.name}</a>` : '')
+               .find("i").text(flag.result).end()
+            .append(flag.resultUser ? `<span> &ndash; </span><a href="/users/${flag.resultUser.userId}" class="flag-creation-user comment-user">${flag.resultUser.name}</a>` : '<span> &ndash; </span>')
             .append(`<span class="flag-creation-date comment-date" dir="ltr"> <span title="${flag.resultDate.toISOString()}" class="relativetime-clean">${flag.resultDate.toLocaleDateString(undefined, {year: "2-digit", month: "short", day: "numeric", hour: "numeric", minute: "numeric", hour12: false, timeZone: "UTC"})}</span></span>`)
             .appendTo(flagItem);
       }
@@ -677,7 +677,7 @@ function initQuestionPage()
          let flagSummaries = SummarizeFlags(flagCache[postId], 3).map(function(summary)
          {
             var ret = $(`<li data-count='${summary.count}&times;'>`);
-            ret.attr("title", summary.description);
+            ret.attr("title", summary.description  + "\n-- " + summary.flaggerNames);
             if ( !summary.active )
                ret.addClass("inactive");
             if ( summary.type == 'comment' )
@@ -710,10 +710,11 @@ function initQuestionPage()
          );
          maxEntries = maxEntries < 0 ? flags.length : maxEntries||3;
          var ordered = flags.sort((a,b) => b.active-a.active || b.flaggers.length-a.flaggers.length || b.description.length-a.description.length);
-         var ret = ordered.slice(0,maxEntries-1||1)
-            .map(f => ({count: f.flaggers.length||1, description: f.description, active: f.active, type: f.commentId ? 'comment' : 'post'}));
-         if ( ordered.length >= maxEntries && maxEntries > 1)
-            ret.push({count: ordered.filter(f => f.active).slice(maxEntries-1).reduce((acc, f) => (f.flaggers.length||1) + acc, 0), description: " more...", type: 'more'});
+         var bite = maxEntries > flags.length ? maxEntries-1||1 : maxEntries;
+         var ret = ordered.slice(0,bite)
+            .map(f => ({count: f.flaggers.length||1, description: f.description, active: f.active, type: f.commentId ? 'comment' : 'post', flaggerNames: f.flaggers.map(u => u.name||'').join(",")}));
+         if ( ordered.length >= bite && maxEntries > bite)
+            ret.push({count: ordered.filter(f => f.active).slice(bite).reduce((acc, f) => (f.flaggers.length||1) + acc, 0), description: " more...", type: 'more'});
          return ret;
       }
    }
