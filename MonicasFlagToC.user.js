@@ -381,6 +381,8 @@ function initQuestionPage()
          {
             ev.preventDefault();
 
+            var post = $(this).parents(".question, .answer");
+            var postId = post.data("questionid") || post.data("answerid");
             var commentId = $(this).parents(".comment").attr("id").match(/comment-(\d+)/)[1];
             var flagIds = $(this).parents(".flag-info").data("flag-ids");
             var flagListItem = $(this).parents(".flag-info").parent();
@@ -388,7 +390,7 @@ function initQuestionPage()
                return;
 
             FlagFilter.tools.dismissAllCommentFlags(commentId, flagIds)
-               .done(function() { flagListItem.hide('medium'); });
+               .done(function() { flagListItem.hide('medium'); RefreshFlagsForPost(postId);  });
          })
 
          // Make individual flag dismissal work
@@ -404,7 +406,7 @@ function initQuestionPage()
             FlagFilter.tools.flagDismissUI(flagListItem).then(function(dismissal)
             {
                FlagFilter.tools.dismissFlag(postId, flagIds, dismissal.helpful, dismissal.declineId, dismissal.comment)
-                  .done(function(){ flagListItem.hide('medium') });
+                  .done(function(){ flagListItem.hide('medium'); RefreshFlagsForPost(postId); });
             });
          })
 
@@ -417,20 +419,18 @@ function initQuestionPage()
             FlagFilter.tools.flagDismissUI($(this).parent()).then(function(dismissal)
             {
                FlagFilter.tools.dismissAllFlags(postId, dismissal.helpful, dismissal.declineId, dismissal.comment)
-                  .done(function(){ post.find('.mod-tools').hide('medium') });
+                  .done(function(){ post.find('.mod-tools').hide('medium'); RefreshFlagsForPost(postId); });
             });
          })
 
          // historical flag expansion
          .on("click", "a.show-all-flags", function()
          {
-            var postContainer = $(this)
-               .closest(".question,.answer");
             var postId = $(this)
                .data('postid');
-            LoadAllFlags(postId)
-               .then(flags => ShowFlags(postContainer, flags));
+            RefreshFlagsForPost(postId);
          });         
+         
    });
    
    $(document)
@@ -445,10 +445,31 @@ function initQuestionPage()
             var postId = +ajaxOptions.url.match(/\/posts\/(\d+)\/comments/)[1];
             setTimeout(() => ShowCommentFlags(postId), 1);
          }
+         /* uncomment to allow live refreshes while deleting comments - I find this annoying.
+         else if ( /\/posts\/comments\/\d+\/vote\/10/.test(ajaxOptions.url))
+         {
+            var commentId = +ajaxOptions.url.match(/\/(\d+)\//)[1];
+            var post = $("#comment-" + commentId).parents(".question,.answer");
+            var postId = post.data("answerid")||post.data("questionid");
+            setTimeout(() => RefreshFlagsForPost(postId), 1);
+         } */
+         else if ( /\/posts\/\d+\/vote\/10/.test(ajaxOptions.url))
+         {
+            var postId = +ajaxOptions.url.match(/\/(\d+)\//)[1];
+            setTimeout(() => RefreshFlagsForPost(postId), 1);
+         }
       });
-
    
    return loaded.promise();
+      
+   function RefreshFlagsForPost(postId)
+   {
+      var postContainer = $(".answer[data-answerid='"+postId+"'],.question[data-questionid='"+postId+"']")
+      if ( !postContainer.length ) return;
+      LoadAllFlags(postId)
+         .then(flags => ShowFlags(postContainer, flags))
+         .then(flags => RenderToCInWaffleBar());
+   }
 
    function initFlags()
    {
@@ -672,8 +693,14 @@ function initQuestionPage()
          let post = $(".answer[data-answerid='"+postId+"'],.question[data-questionid='"+postId+"']"),
             postType = post.is(".answer") ? "answer" : "question",
             userLink = post.find(".user-details a[href^='/users/']:last,.user-details #history-"+postId),
-            authorName = userLink.is('#history-'+postId) ? '(wiki)' : userLink.text(); 
-         if ( !post.length ) continue; // TODO: handle flags spanning multiple pages of answers
+            attribution = (userLink.is('#history-'+postId) ? '(wiki)' : "by " + userLink.text()),
+            url = postType == 'question' ? '#question' : "#" + postId; 
+         if ( !post.length ) // handle flags spanning multiple pages of answers
+         {
+            url = '/a/' + postId;
+            postType = "answer";
+            attribution = "on another page";            
+         }
          let flagSummaries = SummarizeFlags(flagCache[postId], 3).map(function(summary)
          {
             var ret = $(`<li data-count='${summary.count}&times;'>`);
@@ -681,22 +708,22 @@ function initQuestionPage()
             if ( !summary.active )
                ret.addClass("inactive");
             if ( summary.type == 'comment' )
-               $("<a>").attr("href", "#comments-"+postId).text("(comment) " + summary.description).appendTo(ret);
+               $("<a>").attr("href", (/#/.test(url) ? '' : url) + "#comments-"+postId).text("(comment) " + summary.description).appendTo(ret);
             else
                ret.text(summary.description);
             return ret;
          });
          let entry = $("<li>");
          entry.append($("<a>")
-            .attr("href", postType == 'question' ? '#question' : "#" + postId)
-            .text(postType + " by " + authorName)
+            .attr("href", url)
+            .text(postType + " " + attribution)
             .append($("<ul>").append(flagSummaries))
          );
          
          flagToC.append(entry);
       }
-      $('#postflag-bar .flag-wrapper').replaceWith(flagToC);
-      $('#postflag-bar').show();
+      $('#postflag-bar .flag-wrapper, #postflag-bar .flagToC').remove();
+      $('#postflag-bar').append(flagToC).show();
 
       function SummarizeFlags(flaggedPost, maxEntries)
       {
@@ -713,7 +740,7 @@ function initQuestionPage()
          var bite = maxEntries > flags.length ? maxEntries-1||1 : maxEntries;
          var ret = ordered.slice(0,bite)
             .map(f => ({count: f.flaggers.length||1, description: f.description, active: f.active, type: f.commentId ? 'comment' : 'post', flaggerNames: f.flaggers.map(u => u.name||'').join(",")}));
-         if ( ordered.length >= bite && maxEntries > bite)
+         if ( ordered.length > bite && maxEntries > bite)
             ret.push({count: ordered.filter(f => f.active).slice(bite).reduce((acc, f) => (f.flaggers.length||1) + acc, 0), description: " more...", type: 'more'});
          return ret;
       }
