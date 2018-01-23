@@ -3,7 +3,7 @@
 // @description   Implement https://meta.stackexchange.com/questions/305984/suggestions-for-improving-the-moderator-flag-overlay-view/305987#305987
 // @author        Shog9
 // @namespace     https://github.com/Shog9/flagfilter/
-// @version       0.3
+// @version       0.4
 // @include       http*://stackoverflow.com/questions/*
 // @include       http*://*.stackoverflow.com/questions/*
 // @include       http*://dev.stackoverflow.com/questions/*
@@ -419,7 +419,7 @@ function initQuestionPage()
             FlagFilter.tools.flagDismissUI($(this).parent()).then(function(dismissal)
             {
                FlagFilter.tools.dismissAllFlags(postId, dismissal.helpful, dismissal.declineId, dismissal.comment)
-                  .done(function(){ post.find('.mod-tools').hide('medium'); RefreshFlagsForPost(postId); });
+                  .done(function(){ post.find('.mod-tools').hide('medium'); RefreshFlagsForPost(postId).then( () => post.find('.mod-tools').show('fast') ); });
             });
          })
 
@@ -466,7 +466,7 @@ function initQuestionPage()
    {
       var postContainer = $(".answer[data-answerid='"+postId+"'],.question[data-questionid='"+postId+"']")
       if ( !postContainer.length ) return;
-      LoadAllFlags(postId)
+      return LoadAllFlags(postId)
          .then(flags => ShowFlags(postContainer, flags))
          .then(flags => RenderToCInWaffleBar());
    }
