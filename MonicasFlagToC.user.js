@@ -3,7 +3,7 @@
 // @description   Implement https://meta.stackexchange.com/questions/305984/suggestions-for-improving-the-moderator-flag-overlay-view/305987#305987
 // @author        Shog9
 // @namespace     https://github.com/Shog9/flagfilter/
-// @version       0.5
+// @version       0.6
 // @include       http*://stackoverflow.com/questions/*
 // @include       http*://*.stackoverflow.com/questions/*
 // @include       http*://dev.stackoverflow.com/questions/*
@@ -390,7 +390,7 @@ function initQuestionPage()
                return;
 
             FlagFilter.tools.dismissAllCommentFlags(commentId, flagIds)
-               .done(function() { flagListItem.hide('medium'); RefreshFlagsForPost(postId);  });
+               .done(function() { flagListItem.hide('medium'); /* annoying - don't do this RefreshFlagsForPost(postId); */  });
          })
 
          // Make individual flag dismissal work
@@ -567,20 +567,26 @@ function initQuestionPage()
  
       var totalFlags = tools.data("totalflags");
       var commentFlags = postFlags.commentFlags.reduce((acc, f) => acc + f.flaggers.length, 0);
+      // this... really just hacks around incomplete information in the waffle bar
+      postFlags.assumeInactiveCommentFlagCount = totalFlags - (activeCount+inactiveCount) - commentFlags;
+      
       if (postFlags.flags.length)
       { 
-         let flagSummaryText = [];
-         if (activeCount > 0) flagSummaryText.push(activeCount + " active flags");
-         if (activeCount < postFlags.flags.length-commentFlags) flagSummaryText.push((postFlags.flags.length - activeCount - commentFlags) + " resolved flags");
-         tools.find("h3.flag-summary")
-            .text(flagSummaryText.join("; "));
+         let flagSummary = [];
+         if (activeCount > 0) flagSummary.push(activeCount + " active flags");
+         if (inactiveCount) flagSummary.push(inactiveCount + " resolved flags");
+         if (postFlags.assumeInactiveCommentFlagCount) flagSummary.push(`<a class='show-all-flags' data-postid='${postFlags.postId}' title='Not sure about these flags; click to load'>${postFlags.assumeInactiveCommentFlagCount} ??? flags</a>`);
+         tools.show()
+            .find("h3.flag-summary").html(flagSummary.join("; "));
+      }
+      else if ( postFlags.assumeInactiveCommentFlagCount )
+      {
+         tools.show()
+            .find("h3.flag-summary").html(`<a class='show-all-flags' data-postid='${postFlags.postId}' title='Not sure about these flags; click to load'>${postFlags.assumeInactiveCommentFlagCount} ??? flags</a>`);
       }
       else
          tools.hide();
       
-      // this... really just hacks around incomplete information in the waffle bar
-      postFlags.assumeInactiveCommentFlagCount = totalFlags - (activeCount-inactiveCount) - commentFlags;
-
       if (postFlags.commentFlags.length)
       {
          let issues = postContainer.find(".post-issue-display"),
@@ -625,6 +631,8 @@ function initQuestionPage()
 </td>
 </tr>`);
       }
+      
+      commentContainer.find(".comment-text .flags").remove();
 
       var activeCount = 0;
       var inactiveCount = 0;
