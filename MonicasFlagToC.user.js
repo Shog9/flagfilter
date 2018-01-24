@@ -3,7 +3,7 @@
 // @description   Implement https://meta.stackexchange.com/questions/305984/suggestions-for-improving-the-moderator-flag-overlay-view/305987#305987
 // @author        Shog9
 // @namespace     https://github.com/Shog9/flagfilter/
-// @version       0.6
+// @version       0.7
 // @include       http*://stackoverflow.com/questions/*
 // @include       http*://*.stackoverflow.com/questions/*
 // @include       http*://dev.stackoverflow.com/questions/*
@@ -582,7 +582,7 @@ function initQuestionPage()
       else if ( postFlags.assumeInactiveCommentFlagCount )
       {
          tools.show()
-            .find("h3.flag-summary").html(`<a class='show-all-flags' data-postid='${postFlags.postId}' title='Not sure about these flags; click to load accurate information for ${postFlags.assumeInactiveCommentFlagCount} undefined flags'>(*load full flag info)</a>`);
+            .find("h3.flag-summary").html(`(*<a class='show-all-flags' data-postid='${postFlags.postId}' title='Not sure about these flags; click to load accurate information for ${postFlags.assumeInactiveCommentFlagCount} undefined flags'>load full flag info</a>)`);
       }
       else
          tools.hide();
@@ -662,11 +662,11 @@ function initQuestionPage()
       var totalFlags = tools.data("totalflags");
       var flagSummary = [];
       if (activeCount > 0) 
-         flagSummary.push(activeCount + " active comment flags");
+         flagSummary.push(`<a class='show-all-flags' data-postid='${postFlags.postId}' title='load complete flag details'>${activeCount} active comment flags</a>`);
       
       inactiveCount = inactiveCount || postFlags.assumeInactiveCommentFlagCount;
       if (inactiveCount)
-         flagSummary.push(`<a class='show-all-flags' data-postid='${postFlags.postId}'>${inactiveCount} resolved comment flags*</a>`);
+         flagSummary.push(`${inactiveCount} resolved comment flags${postFlags.assumeInactiveCommentFlagCount ? '*' : ''}`);
       
       commentContainer.find("h3.comment-flag-summary")
          .html(flagSummary.join("; "));
