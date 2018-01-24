@@ -3,7 +3,7 @@
 // @description   Implement https://meta.stackexchange.com/questions/305984/suggestions-for-improving-the-moderator-flag-overlay-view/305987#305987
 // @author        Shog9
 // @namespace     https://github.com/Shog9/flagfilter/
-// @version       0.4
+// @version       0.5
 // @include       http*://stackoverflow.com/questions/*
 // @include       http*://*.stackoverflow.com/questions/*
 // @include       http*://dev.stackoverflow.com/questions/*
@@ -515,9 +515,16 @@ function initQuestionPage()
       var flagContainer = tools.find("ul.flags")
          .empty();
       var activeCount = 0;
+      var inactiveCount = 0;
       for (let flag of postFlags.flags)
       {
-         if (flag.active) activeCount++;
+         if (flag.active) 
+         {
+            activeCount += flag.flaggers.reduce( (acc, u) => acc + u.active !== false ? 1 : 0, 0);
+            inactiveCount += flag.flaggers.reduce( (acc, u) => acc + u.active === false ? 1 : 0, 0);
+         }
+         else
+            inactiveCount += flag.flaggers.length;
 
          if (flag.description === "spam" || flag.description === "rude or abusive")
          {
@@ -559,21 +566,25 @@ function initQuestionPage()
       }
  
       var totalFlags = tools.data("totalflags");
+      var commentFlags = postFlags.commentFlags.reduce((acc, f) => acc + f.flaggers.length, 0);
       if (postFlags.flags.length)
       { 
          let flagSummaryText = [];
          if (activeCount > 0) flagSummaryText.push(activeCount + " active flags");
-         if (activeCount < postFlags.flags.length) flagSummaryText.push((postFlags.flags.length - activeCount) + " resolved flags");
+         if (activeCount < postFlags.flags.length-commentFlags) flagSummaryText.push((postFlags.flags.length - activeCount - commentFlags) + " resolved flags");
          tools.find("h3.flag-summary")
             .text(flagSummaryText.join("; "));
       }
-      else if (totalFlags == postFlags.commentFlags.length)
+      else
          tools.hide();
+      
+      // this... really just hacks around incomplete information in the waffle bar
+      postFlags.assumeInactiveCommentFlagCount = totalFlags - (activeCount-inactiveCount) - commentFlags;
 
       if (postFlags.commentFlags.length)
       {
          let issues = postContainer.find(".post-issue-display"),
-            moreCommentsLink = $("#comments-link-" + postFlags.postId + " a:last:visible"),
+            moreCommentsLink = $("#comments-link-" + postFlags.postId + " a.js-show-link:last:visible"),
             deletedCommentsLink = issues.find("a[href='/admin/posts/" + postFlags.postId + "/comments']"),
             inactiveCommentFlags = !postFlags.commentFlags.every(f => f.active);
 
@@ -585,6 +596,10 @@ function initQuestionPage()
          else
             ShowCommentFlags(postFlags.postId);
       }
+      else if (totalFlags > activeFlags+inactiveFlags)
+      {
+         ShowCommentFlags(postFlags.postId);
+      }
 
    }
 
@@ -595,7 +610,7 @@ function initQuestionPage()
       var tools = postContainer.find("tr.mod-tools");
       var postFlags = flagCache[postId];
 
-      if (!postFlags || !postFlags.commentFlags.length || !commentContainer.length) return;
+      if (!postFlags || ((!postFlags.commentFlags.length || !commentContainer.length) && !assumeInactiveCommentFlagCount) ) return;
 
       if (!commentContainer.find(".mod-tools-comment")
          .length)
@@ -612,6 +627,7 @@ function initQuestionPage()
       }
 
       var activeCount = 0;
+      var inactiveCount = 0;
       for (let flag of postFlags.commentFlags)
       {
          let comment = commentContainer.find("#comment-" + flag.commentId);
@@ -623,26 +639,29 @@ function initQuestionPage()
 
          comment.addClass("mod-tools-comment");
 
-         if (flag.active) activeCount++;
-
+         if (flag.active) 
+         {
+            activeCount += flag.flaggers.reduce( (acc, u) => acc + u.active !== false ? 1 : 0, 0);
+            inactiveCount += flag.flaggers.reduce( (acc, u) => acc + u.active === false ? 1 : 0, 0);
+         }
+         else
+            inactiveCount += flag.flaggers.length;
+         
          let flagItem = RenderFlagItem(flag);
          container.append(flagItem);
       }
 
       var totalFlags = tools.data("totalflags");
-      var flagSummaryText = [];
-      if (activeCount > 0) flagSummaryText.push(activeCount + " active comment flags");
-      if (activeCount < postFlags.commentFlags.length)
-         flagSummaryText.push((postFlags.commentFlags.length - activeCount) + " resolved comment flags");
-      else if (postFlags.flags.length && activeCount + postFlags.flags.length < totalFlags)
-         flagSummaryText.push("");
+      var flagSummary = [];
+      if (activeCount > 0) 
+         flagSummary.push(activeCount + " active comment flags");
+      
+      inactiveCount = inactiveCount || postFlags.assumeInactiveCommentFlagCount;
+      if (inactiveCount)
+         flagSummary.push(`<a class='show-all-flags' data-postid='${postFlags.postId}'>${inactiveCount} resolved comment flags</a>`);
+      
       commentContainer.find("h3.comment-flag-summary")
-         .text(flagSummaryText.join("; "));
-
-      // ensure resolved comment flags can be loaded even when there are active flags
-      if (activeCount == postFlags.commentFlags.length && postFlags.flags.length && activeCount + postFlags.flags.length < totalFlags)
-         commentContainer.find("h3.comment-flag-summary")
-         .append(`<a class='show-all-flags' data-postid='${postFlags.postId}'>${totalFlags - (activeCount + postFlags.flags.length)} resolved comment flags</a>`);
+         .html(flagSummary.join("; "));
    }
 
    function RenderFlagItem(flag)
