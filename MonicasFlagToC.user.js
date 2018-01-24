@@ -573,16 +573,16 @@ function initQuestionPage()
       if (postFlags.flags.length)
       { 
          let flagSummary = [];
-         if (activeCount > 0) flagSummary.push(activeCount + " active flags");
-         if (inactiveCount) flagSummary.push(inactiveCount + " resolved flags");
-         if (postFlags.assumeInactiveCommentFlagCount) flagSummary.push(`<a class='show-all-flags' data-postid='${postFlags.postId}' title='Not sure about these flags; click to load'>${postFlags.assumeInactiveCommentFlagCount} ??? flags</a>`);
+         if (activeCount > 0) flagSummary.push(activeCount + " active post flags");
+         if (inactiveCount) flagSummary.push(inactiveCount + " resolved post flags");
+         if (postFlags.assumeInactiveCommentFlagCount) flagSummary.push(`(*<a class='show-all-flags' data-postid='${postFlags.postId}' title='Not sure about these flags; click to load accurate information for ${postFlags.assumeInactiveCommentFlagCount} undefined flags'>load full flag info</a>)`);
          tools.show()
             .find("h3.flag-summary").html(flagSummary.join("; "));
       }
       else if ( postFlags.assumeInactiveCommentFlagCount )
       {
          tools.show()
-            .find("h3.flag-summary").html(`<a class='show-all-flags' data-postid='${postFlags.postId}' title='Not sure about these flags; click to load'>${postFlags.assumeInactiveCommentFlagCount} ??? flags</a>`);
+            .find("h3.flag-summary").html(`<a class='show-all-flags' data-postid='${postFlags.postId}' title='Not sure about these flags; click to load accurate information for ${postFlags.assumeInactiveCommentFlagCount} undefined flags'>(*load full flag info)</a>`);
       }
       else
          tools.hide();
@@ -666,7 +666,7 @@ function initQuestionPage()
       
       inactiveCount = inactiveCount || postFlags.assumeInactiveCommentFlagCount;
       if (inactiveCount)
-         flagSummary.push(`<a class='show-all-flags' data-postid='${postFlags.postId}'>${inactiveCount} resolved comment flags</a>`);
+         flagSummary.push(`<a class='show-all-flags' data-postid='${postFlags.postId}'>${inactiveCount} resolved comment flags*</a>`);
       
       commentContainer.find("h3.comment-flag-summary")
          .html(flagSummary.join("; "));
