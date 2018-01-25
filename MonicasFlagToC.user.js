@@ -703,6 +703,8 @@ function initQuestionPage()
          let flaggerNames = [];
          for (let user of flag.flaggers)
          {
+            if ( !user || !user.name ) continue;
+            
             flaggerNames.push(`<a href="/users/${user.userId}" class="flag-creation-user comment-user">${user.name}</a>
                <span class="flag-creation-date comment-date" dir="ltr"><span title="${user.flagCreationDate.toISOString()}" class="relativetime-clean">${user.flagCreationDate.toLocaleDateString(undefined, {year: "2-digit", month: "short", day: "numeric", hour: "numeric", minute: "numeric", hour12: false, timeZone: "UTC"})}</span></span>`);
          }
