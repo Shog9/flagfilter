@@ -3,7 +3,7 @@
 // @description   Implement https://meta.stackexchange.com/questions/305984/suggestions-for-improving-the-moderator-flag-overlay-view/305987#305987
 // @author        Shog9
 // @namespace     https://github.com/Shog9/flagfilter/
-// @version       0.7
+// @version       0.8
 // @include       http*://stackoverflow.com/questions/*
 // @include       http*://*.stackoverflow.com/questions/*
 // @include       http*://dev.stackoverflow.com/questions/*
@@ -123,7 +123,14 @@ function initStyles()
    }
 
    .mod-tools ul.flags .flag-info {
-       white-space: nowrap;
+       /* white-space: nowrap; */
+   }
+   
+   /**/
+   
+   .mod-tools ul.flags .flag-info .flag-creation-user
+   {
+      white-space: nowrap;
    }
    `;
 
@@ -284,12 +291,14 @@ function initTools()
             {
                var ret = {baseHostAddress: '', name: ''};
                
-               if ( !/belongs|moved? to|migrat|better fit|stackexchange/.test(flagText) )
+               if ( !/belongs on|moved? to|migrat|better fit/.test(flagText) )
                   return ret;
                
                sites.forEach(function(site)
                {
                   var baseHost = site.site_url.replace(/^https?:\/\//, '');
+                  if ( baseHost == window.location.host ) return;
+                  
                   if ( (RegExp(baseHost.replace('.stackexchange.com', ''), 'i').test(flagText)
                      || RegExp(site.name.replace(' ', '\\s?'), 'i').test(flagText))
                      && ret.baseHostAddress.length < baseHost.length )
@@ -347,33 +356,6 @@ function initQuestionPage()
    {
       initFlags();
 
-      // add a migrate options, if appropriate
-      $(".mod-message .active-flag")
-         .each(function()
-         {
-            var el = this;
-            FlagFilter.tools.predictMigrationDest(this.innerText)
-               .done(function(site)
-               {
-                  if (!site.name) return;
-                  $("<a>")
-                     .attr("href", "#")
-                     .addClass("migration-link")
-                     .html("belongs on " + site.name + "?")
-                     .click(function()
-                     {
-                        var questionId = location.pathname.match(/\/questions\/(\d+)/)[1];
-                        if ( confirm("Really migrate this question to " + site.name + "?") )
-                           FlagFilter.tools.migrateTo(questionId, site.baseHostAddress)
-                              .done(function() { location.reload() })
-                              .fail(function() { alert("something went wrong") });
-                     })
-                     .insertBefore(el)
-               })
-         });
-         
-         
-
       //  Wire up prototype mod tools
       $("#content")
          // Comment flag dismissal
@@ -429,7 +411,7 @@ function initQuestionPage()
             var postId = $(this)
                .data('postid');
             RefreshFlagsForPost(postId);
-         });         
+         });
          
    });
    
@@ -526,12 +508,21 @@ function initQuestionPage()
          else
             inactiveCount += flag.flaggers.length;
 
-         if (flag.description === "spam" || flag.description === "rude or abusive")
+         if ( (flag.description === "spam" || flag.description === "rude or abusive") 
+            && !flag.active
+            && !tools.find(".flag-dispute-spam").length )
          {
-            if (!tools.find(".flag-dispute-spam")
-               .length)
-               $("<input class='flag-dispute-spam' type='button' value='Clear spam/offensive' title='Deletes all rude or abusive and spam flags on this post, as well as any automatic Community downvotes. If this post reached the flag limit, it will be undeleted and unlocked, and the owner will have their rep restored.'>")
-               .appendTo(modActions);
+            $("<input class='flag-dispute-spam' type='button' value='Clear all spam/rude/abusive' title='Disputes all rude or abusive and spam flags on this post, and removes all associated automatic reputation penalties from its author. If this post reached the flag limit, it will be undeleted and unlocked.'>")
+            .appendTo(modActions)
+            .click(function()
+            {
+               if ( !confirm("This will undelete the post, remove any penalties against the author, and dispute ALL spam / rude / abusive flags ever raised on it. Are you sure?") )
+                  return;
+               
+               $.post("/admin/posts/" + postFlags.postId + "/clear-offensive-spam-flags", {fkey: StackExchange.options.user.fkey})
+                  .then(() => location.reload(), 
+                           function(err) { console.log(err); alert("something went wrong") });
+            });
          }
          
          FlagFilter.tools.predictMigrationDest(flag.description)
