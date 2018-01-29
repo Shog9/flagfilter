@@ -3,7 +3,7 @@
 // @description   Implement https://meta.stackexchange.com/questions/305984/suggestions-for-improving-the-moderator-flag-overlay-view/305987#305987
 // @author        Shog9
 // @namespace     https://github.com/Shog9/flagfilter/
-// @version       0.8
+// @version       0.81
 // @include       http*://stackoverflow.com/questions/*
 // @include       http*://*.stackoverflow.com/questions/*
 // @include       http*://dev.stackoverflow.com/questions/*
@@ -100,7 +100,7 @@ function initStyles()
       
    /* this used to live in moderator.less... Then balpha killed it. But at least there was poetry.
       (just in case you were curious about the presence of K&R braces) */
-   .mod-tools .mod-tools-post, .mod-tools .mod-tools-comment > td:first-child {
+   .mod-tools .mod-tools-post, .mod-tools .mod-tools-comment > :first-child {
      border-left: 8px solid #DB5D5D;
    }
 
@@ -612,7 +612,7 @@ function initQuestionPage()
       if (!commentContainer.find(".mod-tools-comment")
          .length)
       {
-         commentContainer
+         var commentModToolsContainer = commentContainer
             .addClass("mod-tools")
             .find(">table>tbody")
             .prepend(`<tr class="comment mod-tools-comment">
@@ -621,6 +621,15 @@ function initQuestionPage()
 <h3 class="comment-flag-summary"></h3>
 </td>
 </tr>`);
+         
+         if ( !commentModToolsContainer.length ) 
+            commentModToolsContainer = commentContainer.find(">ul.comments-list")
+               .prepend(`<li class="comment mod-tools-comment">
+                                 <div class="js-comment-actions comment-actions"></div>
+                                 <div class="comment-text">
+                                    <h3 class="comment-flag-summary"></h3>
+                                 </div>
+                              </li>`);
       }
       
       commentContainer.find(".comment-text .flags").remove();
