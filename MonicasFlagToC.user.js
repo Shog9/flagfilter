@@ -201,7 +201,7 @@ function initTools()
 
       formatDate: function(isoDate)
       {
-         return (new Date(isoDate.replace(/\s/,'T')))
+         return (new Date(isoDate.replace(' ','T')))
             .toLocaleDateString(undefined, {year: "numeric", month: "short", day: "numeric", timeZone: "UTC"});
       },
 
@@ -814,7 +814,7 @@ function initQuestionPage()
                         description: $.trim(description.html()) || $.trim(flagType.text()),
                         active: !deleted.length,
                         result: $.trim(result.text()),
-                        resultDate: deleted.length ? new Date(deleted.attr("title")) : null,
+                        resultDate: deleted.length ? new Date(deleted.attr("title").replace(' ','T')) : null,
                         resultUser:
                         {
                            userId: mod.length ? +mod.attr("href")
@@ -826,7 +826,7 @@ function initQuestionPage()
                            userId: flagger.length ? +flagger.attr("href")
                               .match(/\/users\/([-\d]+)/)[1] : -1,
                            name: flagger.text(),
-                           flagCreationDate: new Date(created.attr("title"))
+                           flagCreationDate: new Date(created.attr("title").replace(' ','T'))
                         }]
                      });
                   }
@@ -838,7 +838,7 @@ function initQuestionPage()
                         description: $.trim(description.html()) || $.trim(flagType.text()),
                         active: !deleted.length,
                         result: $.trim(result.text()),
-                        resultDate: deleted.length ? new Date(deleted.attr("title")) : null,
+                        resultDate: deleted.length ? new Date(deleted.attr("title").replace(' ','T')) : null,
                         resultUser:
                         {
                            userId: mod.length ? +mod.attr("href")
@@ -850,7 +850,7 @@ function initQuestionPage()
                            userId: flagger.length ? +flagger.attr("href")
                               .match(/\/users\/([-\d]+)/)[1] : -1,
                            name: flagger.text(),
-                           flagCreationDate: new Date(created.attr("title"))
+                           flagCreationDate: new Date(created.attr("title").replace(' ','T'))
                         }]
                      });
 
@@ -937,7 +937,7 @@ function initQuestionPage()
                                  name: this.textContent,
                                  flagCreationDate: new Date($(this)
                                     .next(".relativetime")
-                                    .attr('title') || new Date())
+                                    .attr('title').replace(' ','T') || new Date())
                               };
                            })
                            .toArray()
