@@ -3,7 +3,7 @@
 // @description   Implement https://meta.stackexchange.com/questions/305984/suggestions-for-improving-the-moderator-flag-overlay-view/305987#305987
 // @author        Shog9
 // @namespace     https://github.com/Shog9/flagfilter/
-// @version       0.81
+// @version       0.82
 // @include       http*://stackoverflow.com/questions/*
 // @include       http*://*.stackoverflow.com/questions/*
 // @include       http*://dev.stackoverflow.com/questions/*
@@ -29,7 +29,7 @@ function with_jquery(f)
 {
   var script = document.createElement("script");
   script.type = "text/javascript";
-  script.textContent = "if (window.jQuery) (" + f.toString() + ")(window.jQuery)" + "\n\n//# sourceURL=MonicasFlagToc.userscript";
+  script.textContent = "if (window.jQuery) (" + f.toString() + ")(window.jQuery)" + "\n\n//# sourceURL=" + encodeURI(GM_info.script.namespace.replace(/\/?$/, "/")) + encodeURIComponent(GM_info.script.name); // make this easier to debug;
   document.body.appendChild(script);
 }
 
@@ -201,7 +201,7 @@ function initTools()
 
       formatDate: function(isoDate)
       {
-         return (new Date(isoDate.replace(' ','T')))
+         return ParseIsoDate(isoDate)
             .toLocaleDateString(undefined, {year: "numeric", month: "short", day: "numeric", timeZone: "UTC"});
       },
 
@@ -814,7 +814,7 @@ function initQuestionPage()
                         description: $.trim(description.html()) || $.trim(flagType.text()),
                         active: !deleted.length,
                         result: $.trim(result.text()),
-                        resultDate: deleted.length ? new Date(deleted.attr("title").replace(' ','T')) : null,
+                        resultDate: deleted.length ? ParseIsoDate(deleted.attr("title"), null) : null,
                         resultUser:
                         {
                            userId: mod.length ? +mod.attr("href")
@@ -826,7 +826,7 @@ function initQuestionPage()
                            userId: flagger.length ? +flagger.attr("href")
                               .match(/\/users\/([-\d]+)/)[1] : -1,
                            name: flagger.text(),
-                           flagCreationDate: new Date(created.attr("title").replace(' ','T'))
+                           flagCreationDate: ParseIsoDate(created.attr("title"), null)
                         }]
                      });
                   }
@@ -838,7 +838,7 @@ function initQuestionPage()
                         description: $.trim(description.html()) || $.trim(flagType.text()),
                         active: !deleted.length,
                         result: $.trim(result.text()),
-                        resultDate: deleted.length ? new Date(deleted.attr("title").replace(' ','T')) : null,
+                        resultDate: deleted.length ? ParseIsoDate(deleted.attr("title"), null) : null,
                         resultUser:
                         {
                            userId: mod.length ? +mod.attr("href")
@@ -850,7 +850,7 @@ function initQuestionPage()
                            userId: flagger.length ? +flagger.attr("href")
                               .match(/\/users\/([-\d]+)/)[1] : -1,
                            name: flagger.text(),
-                           flagCreationDate: new Date(created.attr("title").replace(' ','T'))
+                           flagCreationDate: ParseIsoDate(created.attr("title"), null)
                         }]
                      });
 
@@ -935,9 +935,9 @@ function initQuestionPage()
                               return {
                                  userId: userId && userId.length > 0 ? +userId[1] : null,
                                  name: this.textContent,
-                                 flagCreationDate: new Date($(this)
+                                 flagCreationDate: ParseIsoDate($(this)
                                     .next(".relativetime")
-                                    .attr('title').replace(' ','T') || new Date())
+                                    .attr('title'), new Date())
                               };
                            })
                            .toArray()
@@ -968,7 +968,12 @@ function initQuestionPage()
          .toArray();
    }
 
-   
+   // hate safari
+   function ParseIsoDate(isoDate, def)
+   {
+      var parsed = Date.parse((isoDate||'').replace(' ','T'));
+      return parsed ? new Date(parsed) : def;
+   }
 
 }
    
