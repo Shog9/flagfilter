@@ -3,7 +3,7 @@
 // @description   Implement https://meta.stackexchange.com/questions/305984/suggestions-for-improving-the-moderator-flag-overlay-view/305987#305987
 // @author        Shog9
 // @namespace     https://github.com/Shog9/flagfilter/
-// @version       0.84
+// @version       0.85
 // @include       http*://stackoverflow.com/questions/*
 // @include       http*://*.stackoverflow.com/questions/*
 // @include       http*://dev.stackoverflow.com/questions/*
@@ -843,7 +843,7 @@ function initQuestionPage()
              <span class="flag-info" data-flag-ids="${flag.flagIds ? flag.flagIds.join(';') : ''}">
                  &ndash;
                 <span class="flaggers"></span>
-                 <a class="flag-dismiss delete-tag" title="dismiss this flag"></a>
+                 <a class="flag-dismiss delete-tag" title="dismiss this flag ${flag.commentId ? 'as declined' : 'as helpful or declined'}"></a>
              </span>
          </li>`);
 
