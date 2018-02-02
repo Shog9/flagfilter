@@ -3,7 +3,7 @@
 // @description   Implement https://meta.stackexchange.com/questions/305984/suggestions-for-improving-the-moderator-flag-overlay-view/305987#305987
 // @author        Shog9
 // @namespace     https://github.com/Shog9/flagfilter/
-// @version       0.83
+// @version       0.84
 // @include       http*://stackoverflow.com/questions/*
 // @include       http*://*.stackoverflow.com/questions/*
 // @include       http*://dev.stackoverflow.com/questions/*
@@ -277,7 +277,7 @@ function initTools()
          var helpfulForm = $(`
             <div class="dismiss-flags-popup">
                <form class="g-column _gutters">
-                  <label class="f-label">Reason</label>
+                  <label class="f-label">Reason flag was helpful</label>
                   <div class="g-col g-row _gutters">
                      <div class="g-col -input">
                          <input type="text" placeholder="optional feedback (visible to the user)" class="f-input">
@@ -312,7 +312,7 @@ function initTools()
          var declineForm = $(`
             <div class="dismiss-flags-popup">
                <form class="g-column _gutters">
-                  <label class="f-label">Reason</label>
+                  <label class="f-label">Reason for declining</label>
                   <div class="g-col g-row _gutters">
                      <div class="g-col -input">
                          <input type="text" placeholder="optional feedback (visible to the user)" class="f-input">
