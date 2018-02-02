@@ -3,7 +3,7 @@
 // @description   Implement https://meta.stackexchange.com/questions/305984/suggestions-for-improving-the-moderator-flag-overlay-view/305987#305987
 // @author        Shog9
 // @namespace     https://github.com/Shog9/flagfilter/
-// @version       0.82
+// @version       0.83
 // @include       http*://stackoverflow.com/questions/*
 // @include       http*://*.stackoverflow.com/questions/*
 // @include       http*://dev.stackoverflow.com/questions/*
@@ -125,6 +125,33 @@ function initStyles()
    .mod-tools ul.flags .flag-info {
        /* white-space: nowrap; */
    }
+
+   /**/   
+   
+   /* in which I mangle the site's flexbox styles to work for a purpose they were never intended to serve.
+        this is almost certainly a bad idea, but hopefully easier than chasing site styling and beats 9 bold blue buttons in 18 sq.in.
+         pretty unlikely a designer will ever see this, so I should be safe
+   */
+   .dismiss-flags-popup 
+   { 
+      padding: 16px 0; 
+      display: none;
+   }
+   .dismiss-flags-popup form
+   {
+      display: flex;
+   }
+   .dismiss-flags-popup form .g-row>.-btn
+   {
+      flex: initial;
+   }
+   .dismiss-flags-popup form>button.g-col
+   {
+      text-align: left;
+   }
+   
+   .dismiss-flag-popup { display:none; }
+   
    
    /**/
    
@@ -244,41 +271,167 @@ function initTools()
          }
       },
       
+      flagHelpfulUI: function(uiParent)
+      {
+         var result = $.Deferred();
+         var helpfulForm = $(`
+            <div class="dismiss-flags-popup">
+               <form class="g-column _gutters">
+                  <label class="f-label">Reason</label>
+                  <div class="g-col g-row _gutters">
+                     <div class="g-col -input">
+                         <input type="text" placeholder="optional feedback (visible to the user)" class="f-input">
+                     </div>
+                     <div class="g-col -btn">
+                       <button class="btn-outlined mark-flag-helpful" type="submit">mark helpful</button>
+                     </div>
+                  </div>
+                </form>
+            </div>
+         `);
+         
+         uiParent.find(".dismiss-flags-popup").remove();
+         helpfulForm
+            .appendTo(uiParent)
+            .slideDown()
+            .find("button,input").first().focus();
+
+         helpfulForm.find(".mark-flag-helpful").click(function(ev)
+         {
+            ev.preventDefault();
+            helpfulForm.remove();
+            result.resolve({helpful: true, declineId: 0, comment: helpfulForm.find("input[type=text]").val()});
+         });
+         
+         return result.promise();
+      },
+      
+      flagDeclineUI: function(uiParent)
+      {
+         var result = $.Deferred();
+         var declineForm = $(`
+            <div class="dismiss-flags-popup">
+               <form class="g-column _gutters">
+                  <label class="f-label">Reason</label>
+                  <div class="g-col g-row _gutters">
+                     <div class="g-col -input">
+                         <input type="text" placeholder="optional feedback (visible to the user)" class="f-input">
+                     </div>
+                     <div class="g-col -btn">
+                       <button class="btn-outlined mark-flag-declined" value="other" type="submit" disabled>decline</button>
+                     </div>
+                  </div>
+               </form>
+            </div>
+         `);
+           
+         var reasons = {
+            technical: {
+               id: 1, 
+               prompt: "flags should not be used to indicate technical inaccuracies, or an altogether wrong answer",
+               title: "use when the post does not violate the standards of the site, but is simply misleading or inaccurate" 
+            },
+            noevidence: {
+               id: 2, 
+               prompt: "a moderator reviewed your flag, but found no evidence to support it",
+               title: "use when you were unable to find any evidence that the problem described by the flag actually occurred" 
+            },
+            nomods: {
+               id: 3, 
+               prompt: "flags should only be used to make moderators aware of content that requires their intervention",
+               title: "use when the problem described could be corrected by the flagger, passers-by, the passage of time, or being less pedantic" 
+            },
+            stdflags: {
+               id: 4, 
+               prompt: "using standard flags helps us prioritize problems and resolve them faster...",
+               title: "Using standard flags helps us prioritize problems and resolve them faster. Please familiarize yourself with the list of standard flags: see What is Flagging?" 
+            }
+         };
+           
+         var lastDecline = localStorage["flaaaaags.last-decline"];
+         if ( lastDecline )
+         {
+            reasons["lastEntered"] = {
+               id: 9999, 
+               prompt: lastDecline,
+               title: "this is the last custom reason you used to decline a flag" 
+            };
+         }
+         
+         for (let reason in reasons)
+         {
+            $('<button class="btn-outlined g-col -btn mark-flag-declined" type="button"></button>')
+               .attr({value: reason, title: reasons[reason].title})
+               .text(reasons[reason].prompt)
+               .insertAfter(declineForm.find("form>label,form>button:last").last());
+         }
+         
+         uiParent.find(".dismiss-flags-popup").remove();
+         declineForm
+            .appendTo(uiParent)
+            .slideDown()
+            .find("button,input").first().focus();
+         
+         var customDeclineField = declineForm.find("input[type=text]")
+            .on("input", function()
+            {
+               var text = customDeclineField.val();
+               declineForm.find(".mark-flag-declined[value=other]").prop("disabled", text.length === 0);
+            });
+
+         declineForm.find(".mark-flag-declined").click(function(ev)
+         {
+            ev.preventDefault();
+            
+            var declineReason = reasons[this.value] ? reasons[this.value].id : 0;
+            var declineText = "";
+            if ( declineReason == 9999 )
+            {
+               declineText = lastDecline;
+               declineReason=0;
+            }
+            else if ( declineReason == 0 )
+            {
+               declineText = customDeclineField.val();
+               localStorage["flaaaaags.last-decline"] = declineText;
+            }
+            
+            declineForm.remove();
+            result.resolve({helpful: false, declineId: declineReason, comment: declineText});
+         });
+         
+         return result.promise();
+      },
+      
       
       flagDismissUI: function(uiParent)
       {
          var result = $.Deferred();
-         var dismissTools = $('<div class="dismiss-flags-popup"><input type="text" maxlength="200" style="width:98%" placeholder="optional feedback (visible to the user)"><br><br><input type="button" value="helpful" title="the flags have merit but no further action is required"> &nbsp; &nbsp; <input type="button" value="decline: technical" title="errors are not mod biz"> <input type="button" value="decline: no evidence" title="to support these flags"> <input type="button" value="decline: no mods needed"  title="to handle these flags"> <input type="button" value="decline: standard flags"  title="Using standard flags helps us prioritize problems and resolve them faster. Please familiarize yourself with the list of standard flags"></div>');
+         var dismissTools = $(`
+            <div class="dismiss-flag-popup">
+               <button class="flag-dismiss-helpful" type="button" title="mark any pending flags as helpful">Helpful&hellip;</button> 
+               <button class="flag-dismiss-decline" type="button" title="mark any pending flags as declined">Decline&hellip;</button>         
+            </div>
+         `);
 
+         uiParent.find(".dismiss-flag-popup").remove();
          dismissTools
             .appendTo(uiParent)
-            .slideDown();
-
-         dismissTools.find("input[value='helpful']").click(function()
+            .slideDown()
+            .find("button,input").first().focus();
+         
+         dismissTools.find("button").click(function()
          {
-            // dismiss as helpful
-            dismissTools.remove();
-            result.resolve({helpful: true, declineId: 0, comment: dismissTools.find("input[type=text]").val()});
-         });
-         dismissTools.find("input[value='decline: technical']").click(function()
-         {
-            dismissTools.remove();
-            result.resolve({helpful: false, declineId: 1, comment: dismissTools.find("input[type=text]").val()});
-         });
-         dismissTools.find("input[value='decline: no evidence']").click(function()
-         {
-            dismissTools.remove();
-            result.resolve({helpful: false, declineId: 2, comment: dismissTools.find("input[type=text]").val()});
-         });
-         dismissTools.find("input[value='decline: no mods needed']").click(function()
-         {
-            dismissTools.remove();
-            result.resolve({helpful: false, declineId: 3, comment: dismissTools.find("input[type=text]").val()});
-         });
-         dismissTools.find("input[value='decline: standard flags']").click(function()
-         {
-            dismissTools.remove();
-            result.resolve({helpful: false, declineId: 4, comment: dismissTools.find("input[type=text]").val()});
+            var btn = $(this);
+            var choice = btn.is(".flag-dismiss-helpful") 
+               ? FlagFilter.tools.flagHelpfulUI(btn.parent())
+               : FlagFilter.tools.flagDeclineUI(btn.parent());
+            
+            choice.then(function(dismissal)
+            {
+               dismissTools.remove();
+               result.resolve(dismissal);
+            });
          });
          
          return result.promise();
@@ -393,15 +546,24 @@ function initQuestionPage()
          })
 
          // Make "dismiss all" work
-         .on("click", ".mod-tools .flag-dismiss-all", function()
+         .on("click", ".mod-tools .flag-dismiss-all-helpful, .mod-tools .flag-dismiss-all-decline", function()
          {
-            var post = $(this).parents(".question, .answer");
+            var btn = $(this);
+            var post = btn.parents(".question, .answer");
             var postId = post.data("questionid") || post.data("answerid");
+            
+            var choice = btn.is(".flag-dismiss-all-helpful") 
+               ? FlagFilter.tools.flagHelpfulUI(btn.parent())
+               : FlagFilter.tools.flagDeclineUI(btn.parent());
 
-            FlagFilter.tools.flagDismissUI($(this).parent()).then(function(dismissal)
+            choice.then(function(dismissal)
             {
                FlagFilter.tools.dismissAllFlags(postId, dismissal.helpful, dismissal.declineId, dismissal.comment)
-                  .done(function(){ post.find('.mod-tools').hide('medium'); RefreshFlagsForPost(postId).then( () => post.find('.mod-tools').show('fast') ); });
+                  .done(function()
+                  { 
+                     post.find('.mod-tools').hide('medium'); 
+                     RefreshFlagsForPost(postId).then( () => post.find('.mod-tools').show('fast') ); 
+                  });
             });
          })
 
@@ -551,7 +713,9 @@ function initQuestionPage()
       if (activeCount > 0)
       {
          modActions.prepend(`
-<input class="flag-dismiss-all" type="button" value="no further action&hellip;" title="dismiss any moderator / spam / rude / abusive flags on this post">
+         <button class="flag-dismiss-all-helpful" type="button" title="mark any pending flags as helpful">Helpful&hellip;</button> 
+         <button class="flag-dismiss-all-decline" type="button" title="mark any pending flags as declined">Decline&hellip;</button>
+
 <!-- <input class="flag-delete-with-comment" type="button" value="delete with comment&hellip;" title="deletes this post with a comment the owner will see, as well as marking all flags as helpful"> -->
 `);
       }
