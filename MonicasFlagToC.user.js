@@ -3,7 +3,7 @@
 // @description   Implement https://meta.stackexchange.com/questions/305984/suggestions-for-improving-the-moderator-flag-overlay-view/305987#305987
 // @author        Shog9
 // @namespace     https://github.com/Shog9/flagfilter/
-// @version       0.85
+// @version       0.86
 // @include       http*://stackoverflow.com/questions/*
 // @include       http*://*.stackoverflow.com/questions/*
 // @include       http*://dev.stackoverflow.com/questions/*
@@ -561,8 +561,8 @@ function initQuestionPage()
                FlagFilter.tools.dismissAllFlags(postId, dismissal.helpful, dismissal.declineId, dismissal.comment)
                   .done(function()
                   { 
-                     post.find('.mod-tools').hide('medium'); 
-                     RefreshFlagsForPost(postId).then( () => post.find('.mod-tools').show('fast') ); 
+                     post.find('tr.mod-tools').slideUp(); 
+                     RefreshFlagsForPost(postId).then( () => post.find('tr.mod-tools').sideDown('fast') ); 
                   });
             });
          })
@@ -645,12 +645,12 @@ function initQuestionPage()
             .insertAfter(postContainer.find(">table tr:first"));
 
          if (flags)
-            ShowFlags(postContainer, flags);
+            ShowFlags(postContainer, flags, true);
       });
 
    }
 
-   function ShowFlags(postContainer, postFlags)
+   function ShowFlags(postContainer, postFlags, forceCommentVisibility)
    {
       var tools = postContainer.find("tr.mod-tools");
       var modActions = tools.find(".mod-actions")
@@ -742,7 +742,7 @@ function initQuestionPage()
       else
          tools.hide();
       
-      if (postFlags.commentFlags.length)
+      if (postFlags.commentFlags.length && forceCommentVisibility)
       {
          let issues = postContainer.find(".post-issue-display"),
             moreCommentsLink = $("#comments-link-" + postFlags.postId + " a.js-show-link:last:visible"),
