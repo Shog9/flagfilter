@@ -3,7 +3,7 @@
 // @description   Implement https://meta.stackexchange.com/questions/305984/suggestions-for-improving-the-moderator-flag-overlay-view/305987#305987
 // @author        Shog9
 // @namespace     https://github.com/Shog9/flagfilter/
-// @version       0.86
+// @version       0.87
 // @include       http*://stackoverflow.com/questions/*
 // @include       http*://*.stackoverflow.com/questions/*
 // @include       http*://dev.stackoverflow.com/questions/*
@@ -225,11 +225,52 @@ function initTools()
          return $.post('/admin/review/ban-user', params);
       },
 
-
-      formatDate: function(isoDate)
+      // hate safari
+      parseIsoDate: function(isoDate, def)
       {
-         return ParseIsoDate(isoDate)
-            .toLocaleDateString(undefined, {year: "numeric", month: "short", day: "numeric", timeZone: "UTC"});
+         var parsed = Date.parse((isoDate||'').replace(' ','T'));
+         return parsed ? new Date(parsed) : def;
+      },
+
+      formatDate: function(date)
+      {
+         // mostly stolen from SE.com
+         var delta = (((new Date()).getTime() - date.getTime()) / 1000);
+
+         if (delta < 2) {
+            return 'just now';
+         }
+         if (delta < 60) {
+            return Math.floor(delta) + ' secs ago';
+         }
+         if (delta < 120) {
+            return '1 min ago';
+         }
+         if (delta < 3600) {
+            return Math.floor(delta / 60) + ' mins ago';
+         }
+         if (delta < 7200) {
+            return '1 hour ago';
+         }
+         if (delta < 86400) {
+            return Math.floor(delta / 3600) + ' hours ago';
+         }
+         if (delta < 172800) {
+            return 'yesterday';
+         }
+         if (delta < 259200) {
+            return '2 days ago';
+         }
+         return date.toLocaleDateString(undefined, {month: "short", timeZone: "UTC"})
+            + ' ' + date.toLocaleDateString(undefined, {day: "2-digit", timeZone: "UTC"})
+            + '\\' + date.toLocaleDateString(undefined, {year: "2-digit", timeZone: "UTC"})
+            + ' at ' + date.getUTCHours() + ':' + date.getUTCMinutes();
+                
+      },
+      
+      formatISODate: function(date)
+      {
+         return date.toJSON().replace(/\.\d+Z/, 'Z');        
       },
 
       dismissAllCommentFlags: function(commentId, flagIds)
@@ -761,7 +802,8 @@ function initQuestionPage()
       {
          ShowCommentFlags(postFlags.postId);
       }
-
+      
+      StackExchange.realtime.updateRelativeDates();
    }
 
    function ShowCommentFlags(postId)
@@ -852,7 +894,7 @@ function initQuestionPage()
          $("<div class='flag-outcome'><i></i></div>")
                .find("i").text(flag.result).end()
             .append(flag.resultUser ? `<span> &ndash; </span><a href="/users/${flag.resultUser.userId}" class="flag-creation-user comment-user">${flag.resultUser.name}</a>` : '<span> &ndash; </span>')
-            .append(`<span class="flag-creation-date comment-date" dir="ltr"> <span title="${flag.resultDate.toISOString()}" class="relativetime-clean">${flag.resultDate.toLocaleDateString(undefined, {year: "2-digit", month: "short", day: "numeric", hour: "numeric", minute: "numeric", hour12: false, timeZone: "UTC"})}</span></span>`)
+            .append(`<span class="flag-creation-date comment-date" dir="ltr"> <span title="${FlagFilter.tools.formatISODate(flag.resultDate)}" class="relativetime-clean">${FlagFilter.tools.formatDate(flag.resultDate)}</span></span>`)
             .appendTo(flagItem);
       }
 
@@ -870,7 +912,7 @@ function initQuestionPage()
             if ( !user || !user.name ) continue;
             
             flaggerNames.push(`<a href="/users/${user.userId}" class="flag-creation-user comment-user">${user.name}</a>
-               <span class="flag-creation-date comment-date" dir="ltr"><span title="${user.flagCreationDate.toISOString()}" class="relativetime-clean">${user.flagCreationDate.toLocaleDateString(undefined, {year: "2-digit", month: "short", day: "numeric", hour: "numeric", minute: "numeric", hour12: false, timeZone: "UTC"})}</span></span>`);
+               <span class="flag-creation-date comment-date" dir="ltr"><span title="${FlagFilter.tools.formatISODate(user.flagCreationDate)}" class="relativetime-clean">${FlagFilter.tools.formatDate(user.flagCreationDate)}</span></span>`);
          }
          
          flagItem.find(".flaggers").append(flaggerNames.join(", "));
@@ -978,7 +1020,7 @@ function initQuestionPage()
                         description: $.trim(description.html()) || $.trim(flagType.text()),
                         active: !deleted.length,
                         result: $.trim(result.text()),
-                        resultDate: deleted.length ? ParseIsoDate(deleted.attr("title"), null) : null,
+                        resultDate: deleted.length ? FlagFilter.tools.parseIsoDate(deleted.attr("title"), null) : null,
                         resultUser:
                         {
                            userId: mod.length ? +mod.attr("href")
@@ -990,7 +1032,7 @@ function initQuestionPage()
                            userId: flagger.length ? +flagger.attr("href")
                               .match(/\/users\/([-\d]+)/)[1] : -1,
                            name: flagger.text(),
-                           flagCreationDate: ParseIsoDate(created.attr("title"), null)
+                           flagCreationDate: FlagFilter.tools.parseIsoDate(created.attr("title"), null)
                         }]
                      });
                   }
@@ -1002,7 +1044,7 @@ function initQuestionPage()
                         description: $.trim(description.html()) || $.trim(flagType.text()),
                         active: !deleted.length,
                         result: $.trim(result.text()),
-                        resultDate: deleted.length ? ParseIsoDate(deleted.attr("title"), null) : null,
+                        resultDate: deleted.length ? FlagFilter.tools.parseIsoDate(deleted.attr("title"), null) : null,
                         resultUser:
                         {
                            userId: mod.length ? +mod.attr("href")
@@ -1014,7 +1056,7 @@ function initQuestionPage()
                            userId: flagger.length ? +flagger.attr("href")
                               .match(/\/users\/([-\d]+)/)[1] : -1,
                            name: flagger.text(),
-                           flagCreationDate: ParseIsoDate(created.attr("title"), null)
+                           flagCreationDate: FlagFilter.tools.parseIsoDate(created.attr("title"), null)
                         }]
                      });
 
@@ -1099,7 +1141,7 @@ function initQuestionPage()
                               return {
                                  userId: userId && userId.length > 0 ? +userId[1] : null,
                                  name: this.textContent,
-                                 flagCreationDate: ParseIsoDate($(this)
+                                 flagCreationDate: FlagFilter.tools.parseIsoDate($(this)
                                     .next(".relativetime")
                                     .attr('title'), new Date())
                               };
@@ -1130,13 +1172,6 @@ function initQuestionPage()
             return ret;
          })
          .toArray();
-   }
-
-   // hate safari
-   function ParseIsoDate(isoDate, def)
-   {
-      var parsed = Date.parse((isoDate||'').replace(' ','T'));
-      return parsed ? new Date(parsed) : def;
    }
 
 }
