@@ -261,11 +261,12 @@ function initTools()
          if (delta < 259200) {
             return '2 days ago';
          }
-         return date.toLocaleDateString(undefined, {month: "short", timeZone: "UTC"})
-            + ' ' + date.toLocaleDateString(undefined, {day: "2-digit", timeZone: "UTC"})
-            + '\\' + date.toLocaleDateString(undefined, {year: "2-digit", timeZone: "UTC"})
-            + ' at ' + date.getUTCHours() + ':' + date.getUTCMinutes();
-                
+         return date.toLocaleString(undefined, {month: "short", timeZone: "UTC"})
+            + ' ' + date.toLocaleString(undefined, {day: "2-digit", timeZone: "UTC"})
+            + ( delta > 31536000 ? '\'' + date.toLocaleString(undefined, {year: "2-digit", timeZone: "UTC"}) : '')
+            + ' at' 
+            + ' ' + date.toLocaleString(undefined, {hour: "2-digit", hour12: false, timeZone: "UTC"})
+            + ':' + date.toLocaleString(undefined, {minute: "2-digit", hour12: false, timeZone: "UTC"});
       },
       
       formatISODate: function(date)
