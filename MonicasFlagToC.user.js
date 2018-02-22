@@ -234,6 +234,8 @@ function initTools()
 
       formatDate: function(date)
       {
+         if ( !date.getTime() ) return "(??)";
+         
          // mostly stolen from SE.com
          var delta = (((new Date()).getTime() - date.getTime()) / 1000);
 
@@ -1143,7 +1145,7 @@ function initQuestionPage()
                                  name: this.textContent,
                                  flagCreationDate: FlagFilter.tools.parseIsoDate($(this)
                                     .nextAll(".relativetime:first")
-                                    .attr('title'), new Date())
+                                    .attr('title'), new Date(0))
                               };
                            })
                            .toArray()
@@ -1163,7 +1165,7 @@ function initQuestionPage()
                         active: true,
                         description: $.trim($(this).next(".revision-comment")
                            .html()),
-                        flaggers: Array(+$(this).text()).fill({userId: null, name: "", flagCreationDate: new Date()})
+                        flaggers: Array(+$(this).text()).fill({userId: null, name: "", flagCreationDate: new Date(0)})
                      };
                   })
                   .toArray()
