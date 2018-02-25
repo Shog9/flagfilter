@@ -3,7 +3,7 @@
 // @description   Implement https://meta.stackexchange.com/questions/305984/suggestions-for-improving-the-moderator-flag-overlay-view/305987#305987
 // @author        Shog9
 // @namespace     https://github.com/Shog9/flagfilter/
-// @version       0.88
+// @version       0.89
 // @include       http*://stackoverflow.com/questions/*
 // @include       http*://*.stackoverflow.com/questions/*
 // @include       http*://dev.stackoverflow.com/questions/*
@@ -93,7 +93,7 @@ function initStyles()
       overflow: hidden;
    }
    
-   .flagToC>li ul>li.inactive
+   .flagToC>li ul>li.inactive, .flagToC>li ul>li.inactive a
    {
       color: #6A7E7C;
    }
@@ -541,7 +541,9 @@ function initQuestionPage()
    var loaded = $.Deferred();
    
    var flagCache = {};
-   GetFlagInfoFromWaffleBar();
+   var waffleFlags = GetFlagInfoFromWaffleBar();
+   // give up on the waffle bar if it's listing all flags as handled for a given post - load full flag info.
+   waffleFlags.filter(pf => pf.dirty).forEach( pf => RefreshFlagsForPost(pf.postId) );
    RenderToCInWaffleBar();
       
    // depending on when this gets injected, these *may* already be loaded
@@ -706,10 +708,7 @@ function initQuestionPage()
       for (let flag of postFlags.flags)
       {
          if (flag.active) 
-         {
-            activeCount += flag.flaggers.reduce( (acc, u) => acc + u.active !== false ? 1 : 0, 0);
-            inactiveCount += flag.flaggers.reduce( (acc, u) => acc + u.active === false ? 1 : 0, 0);
-         }
+            activeCount += flag.flaggers.length;
          else
             inactiveCount += flag.flaggers.length;
 
@@ -856,10 +855,7 @@ function initQuestionPage()
          comment.addClass("mod-tools-comment");
 
          if (flag.active) 
-         {
-            activeCount += flag.flaggers.reduce( (acc, u) => acc + u.active !== false ? 1 : 0, 0);
-            inactiveCount += flag.flaggers.reduce( (acc, u) => acc + u.active === false ? 1 : 0, 0);
-         }
+            activeCount += flag.flaggers.length;
          else
             inactiveCount += flag.flaggers.length;
          
@@ -964,21 +960,22 @@ function initQuestionPage()
 
       function SummarizeFlags(flaggedPost, maxEntries)
       {
-         var flags = flaggedPost.flags.concat(Object.values(flaggedPost.commentFlags.filter(cf => cf.active).reduce(function(acc, cf)
+         var flags = flaggedPost.flags.concat(Object.values(flaggedPost.commentFlags.reduce(function(acc, cf)
             {
-               var composite = acc[cf.description] || {commentId: -1, description: cf.description, flaggers: [], active: true};
+               var key = cf.description + cf.active;
+               var composite = acc[key] || {commentId: -1, description: cf.description, flaggers: [], active: cf.active};
                composite.flaggers.push.apply(composite.flaggers, cf.flaggers.length ? cf.flaggers : ["unknown"]);
-               acc[cf.description] = composite;
+               acc[key] = composite;
                return acc;
             }, {}))
          );
          maxEntries = maxEntries < 0 ? flags.length : maxEntries||3;
          var ordered = flags.sort((a,b) => b.active-a.active || b.flaggers.length-a.flaggers.length || b.description.length-a.description.length);
-         var bite = maxEntries > flags.length ? maxEntries-1||1 : maxEntries;
+         var bite = maxEntries < flags.length ? maxEntries-1||1 : maxEntries;
          var ret = ordered.slice(0,bite)
             .map(f => ({count: f.flaggers.length||1, description: f.description, active: f.active, type: f.commentId ? 'comment' : 'post', flaggerNames: f.flaggers.map(u => u.name||'').join(",")}));
          if ( ordered.length > bite && maxEntries > bite)
-            ret.push({count: ordered.filter(f => f.active).slice(bite).reduce((acc, f) => (f.flaggers.length||1) + acc, 0), description: " more...", type: 'more'});
+            ret.push({count: ordered.slice(bite).reduce((acc, f) => (f.flaggers.length||1) + acc, 0), description: " more...", type: 'more'});
          return ret;
       }
    }
@@ -1068,7 +1065,8 @@ function initQuestionPage()
             // consolidate identical flags
             ret.flags = Object.values(ret.flags.reduce( function(acc, f)
                {
-                  var composite = acc[f.description] || {
+                  var key = f.description + f.active;
+                  var composite = acc[key] || {
                      description: f.description, 
                      active: f.active,
                      result: f.result,
@@ -1077,16 +1075,17 @@ function initQuestionPage()
                      flaggers: [], 
                      flagIds: [] };
                   composite.active = composite.active || f.active;
-                  composite.flaggers.push.apply(composite.flaggers, f.flaggers.map(u => Object.assign({}, u, {active: f.active})));
+                  composite.flaggers.push.apply(composite.flaggers, f.flaggers.map(u => Object.assign({}, u)));
                   composite.flagIds.push.apply(composite.flagIds, f.flagIds);
-                  acc[f.description] = composite;
+                  acc[key] = composite;
                   return acc;
                }, {}) );
                
             // consolidate identical flags on the same comment
             ret.commentFlags = Object.values(ret.commentFlags.reduce( function(acc, f)
                {
-                  var composite = acc[f.commentId + f.description] || {
+                  var key = f.commentId + f.description + f.active;
+                  var composite = acc[key] || {
                      commentId: f.commentId,
                      description: f.description, 
                      active: f.active,
@@ -1096,9 +1095,9 @@ function initQuestionPage()
                      flaggers: [], 
                      flagIds: [] };
                   composite.active = composite.active || f.active;
-                  composite.flaggers.push.apply(composite.flaggers, f.flaggers.map(u => Object.assign({}, u, {active: f.active})));
+                  composite.flaggers.push.apply(composite.flaggers, f.flaggers.map(u => Object.assign({}, u)));
                   composite.flagIds.push.apply(composite.flagIds, f.flagIds);
-                  acc[f.commentId + f.description] = composite;
+                  acc[key] = composite;
                   return acc;
                }, {}) );
 
@@ -1170,6 +1169,8 @@ function initQuestionPage()
                   })
                   .toArray()
             };
+            if ( !ret.flags.some( f => f.active ) && !ret.commentFlags.some(f => f.active) )
+               ret.dirty = true;
             flagCache[ret.postId] = ret;
             return ret;
          })
