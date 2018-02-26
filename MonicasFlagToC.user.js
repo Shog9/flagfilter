@@ -979,134 +979,130 @@ function initQuestionPage()
          return ret;
       }
    }
-
+   
    function LoadAllFlags(postId)
-   {
-      return $.get("/admin/posts/timeline/" + postId)
-         .then(function(r)
+   {      
+      return LoadTimeline().then(ParseTimeline).then( af => flagCache[postId] = af );
+   
+      function LoadTimeline()
+      {
+         return fetch("/admin/posts/timeline/" + postId, {method: "GET", credentials: "include"})
+            .then( resp => resp.text() )
+            .then( respText => new DOMParser().parseFromString(respText, "text/html") );
+      }
+      
+      function ParseTimeline(dom)
+      {
+         var ret = {
+            postId: postId,
+            flags: [],
+            commentFlags: []
+         };
+         
+         var flagList = Array.from(dom.querySelectorAll(".post-timeline .event-rows tr[data-eventtype=flag]"));
+         var flaggedCommentList = Array.from(dom.querySelectorAll(".post-timeline .event-rows tr[data-eventtype=comment] td.event-comment .toggle-comment-flags-container a[data-flag-ids]"));
+         var commentMap = flaggedCommentList.reduce( function(acc, fc)
+            {
+               var flagIds = fc.dataset.flagIds.split(';');
+               var parentRow = fc.closest("tr[data-eventtype=comment]");
+               for (let id of flagIds)
+               {
+                  acc[id] = parentRow;
+               }
+               return acc;
+            }, {});
+         var deletionList = Array.from(dom.querySelectorAll(".post-timeline .event-rows tr.deleted-event-details[data-eventid]"));
+         for (let row of flagList)
          {
-            var ret = {
-               postId: postId,
-               flags: [],
-               commentFlags: []
+            var id = +row.dataset.eventid;
+            var deleteRow = deletionList.find( el => el.dataset.eventid==id );
+            var created = row.querySelector(":scope>td.creation-date span.relativetime");
+            var eventType = row.querySelector(":scope>td.event-type>span.event-type");
+            var flagType = row.querySelector(":scope>td.event-verb>span");
+            var flagger = row.querySelector(":scope>td>span.created-by>a");
+            var description = row.querySelector(":scope>td.event-comment>span");
+            var deleted = deleteRow && deleteRow.querySelector(":scope>td.creation-date span.relativetime");
+            var mod = deleteRow && deleteRow.querySelector(":scope>td>span.created-by>a");
+            var result = deleteRow && deleteRow.querySelector(":scope>td.event-comment>span");
+            
+            if ( !created || !eventType || !flagType ) continue;
+               
+            var flag = 
+            {
+               flagIds: [id],
+               description: (description && description.innerHTML.trim()) || (flagType && flagType.textContent.trim()) || "",
+               active: !deleted,
+               result: (result && result.textContent.trim()) || "",
+               resultDate: deleted ? FlagFilter.tools.parseIsoDate(deleted.title) : null,
+               resultUser:
+               {
+                  userId: mod ? +mod.href.match(/\/users\/([-\d]+)/)[1] : -1,
+                  name: (mod && mod.textContent.trim()) || ""
+               },
+               flaggers: [
+               {
+                  userId: flagger ? +flagger.href.match(/\/users\/([-\d]+)/)[1] : -1,
+                  name: (flagger && flagger.textContent.trim()) || "",
+                  flagCreationDate: FlagFilter.tools.parseIsoDate(created.title)
+               }]
             };
-            var flagList = $($.parseHTML(r))
-               .find(".post-timeline .event-rows tr");
-            flagList.has("td.event-type .flag")
-               .each(function()
-               {
-                  var row = $(this);
-                  var id = row.data("eventid");
-                  var deleteRow = flagList.filter(".deleted-event-details[data-eventid=" + id + "]");
-                  var created = row.find(">td.creation-date span.relativetime");
-                  var eventType = row.find(">td.event-type>span.event-type");
-                  var flagType = row.find(">td.event-verb>span");
-                  var flagger = row.find(">td>span.created-by>a");
-                  var description = row.find(">td.event-comment>span");
-                  var deleted = deleteRow.find(">td.creation-date span.relativetime");
-                  var mod = deleteRow.find(">td>span.created-by>a");
-                  var result = deleteRow.find(">td.event-comment>span");
-
-                  if ($.trim(eventType.text()) === "comment flag")
-                  {
-                     var comment = flagList.has("td.event-type>.comment")
-                        .has("td.event-comment .toggle-comment-flags-container a[data-flag-ids*=" + id + "]");
-
-                     ret.commentFlags.push(
-                     {
-                        flagIds: [id],
-                        commentId: comment.data("eventid"),
-                        description: $.trim(description.html()) || $.trim(flagType.text()),
-                        active: !deleted.length,
-                        result: $.trim(result.text()),
-                        resultDate: deleted.length ? FlagFilter.tools.parseIsoDate(deleted.attr("title"), null) : null,
-                        resultUser:
-                        {
-                           userId: mod.length ? +mod.attr("href")
-                              .match(/\/users\/([-\d]+)/)[1] : -1,
-                           name: mod.text()
-                        },
-                        flaggers: [
-                        {
-                           userId: flagger.length ? +flagger.attr("href")
-                              .match(/\/users\/([-\d]+)/)[1] : -1,
-                           name: flagger.text(),
-                           flagCreationDate: FlagFilter.tools.parseIsoDate(created.attr("title"), null)
-                        }]
-                     });
-                  }
-                  else
-                  {
-                     ret.flags.push(
-                     {
-                        flagIds: [id],
-                        description: $.trim(description.html()) || $.trim(flagType.text()),
-                        active: !deleted.length,
-                        result: $.trim(result.text()),
-                        resultDate: deleted.length ? FlagFilter.tools.parseIsoDate(deleted.attr("title"), null) : null,
-                        resultUser:
-                        {
-                           userId: mod.length ? +mod.attr("href")
-                              .match(/\/users\/([-\d]+)/)[1] : -1,
-                           name: mod.text()
-                        },
-                        flaggers: [
-                        {
-                           userId: flagger.length ? +flagger.attr("href")
-                              .match(/\/users\/([-\d]+)/)[1] : -1,
-                           name: flagger.text(),
-                           flagCreationDate: FlagFilter.tools.parseIsoDate(created.attr("title"), null)
-                        }]
-                     });
-
-                  }
-               });
                
-            // consolidate identical flags
-            ret.flags = Object.values(ret.flags.reduce( function(acc, f)
-               {
-                  var key = f.description + f.active;
-                  var composite = acc[key] || {
-                     description: f.description, 
-                     active: f.active,
-                     result: f.result,
-                     resultDate: f.resultDate,
-                     resultUser: f.resultUser,
-                     flaggers: [], 
-                     flagIds: [] };
-                  composite.active = composite.active || f.active;
-                  composite.flaggers.push.apply(composite.flaggers, f.flaggers.map(u => Object.assign({}, u)));
-                  composite.flagIds.push.apply(composite.flagIds, f.flagIds);
-                  acc[key] = composite;
-                  return acc;
-               }, {}) );
+            if (eventType.textContent.trim() === "comment flag")
+            {
+               var comment = commentMap[id];
+               if ( comment ) 
+                  flag.commentId = +comment.dataset.eventid;
                
-            // consolidate identical flags on the same comment
-            ret.commentFlags = Object.values(ret.commentFlags.reduce( function(acc, f)
-               {
-                  var key = f.commentId + f.description + f.active;
-                  var composite = acc[key] || {
-                     commentId: f.commentId,
-                     description: f.description, 
-                     active: f.active,
-                     result: f.result,
-                     resultDate: f.resultDate,
-                     resultUser: f.resultUser,
-                     flaggers: [], 
-                     flagIds: [] };
-                  composite.active = composite.active || f.active;
-                  composite.flaggers.push.apply(composite.flaggers, f.flaggers.map(u => Object.assign({}, u)));
-                  composite.flagIds.push.apply(composite.flagIds, f.flagIds);
-                  acc[key] = composite;
-                  return acc;
-               }, {}) );
-
-            flagCache[postId] = ret;
-
-            return ret;
-         });
+               ret.commentFlags.push(flag);
+            }
+            else
+            {
+               ret.flags.push(flag);
+            }
+         }
+         
+         // consolidate identical flags
+         ret.flags = Object.values(ret.flags.reduce( function(acc, f)
+            {// TODO: split based on result date / user 
+               var key = f.description + f.active;
+               var composite = acc[key] || {
+                  description: f.description, 
+                  active: f.active,
+                  result: f.result,
+                  resultDate: f.resultDate,
+                  resultUser: f.resultUser,
+                  flaggers: [], 
+                  flagIds: [] };
+               composite.active = composite.active || f.active;
+               composite.flaggers.push.apply(composite.flaggers, f.flaggers.map(u => Object.assign({}, u)));
+               composite.flagIds.push.apply(composite.flagIds, f.flagIds);
+               acc[key] = composite;
+               return acc;
+            }, {}) );
+            
+         // consolidate identical flags on the same comment
+         ret.commentFlags = Object.values(ret.commentFlags.reduce( function(acc, f)
+            {
+               var key = f.commentId + f.description + f.active;
+               var composite = acc[key] || {
+                  commentId: f.commentId,
+                  description: f.description, 
+                  active: f.active,
+                  result: f.result,
+                  resultDate: f.resultDate,
+                  resultUser: f.resultUser,
+                  flaggers: [], 
+                  flagIds: [] };
+               composite.active = composite.active || f.active;
+               composite.flaggers.push.apply(composite.flaggers, f.flaggers.map(u => Object.assign({}, u)));
+               composite.flagIds.push.apply(composite.flagIds, f.flagIds);
+               acc[key] = composite;
+               return acc;
+            }, {}) );
+         
+         return ret;
+      }
    }
-
 
    // 
    // this should be considered incomplete AT BEST
