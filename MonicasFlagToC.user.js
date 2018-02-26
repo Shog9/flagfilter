@@ -265,7 +265,7 @@ function initTools()
          }
          return date.toLocaleString(undefined, {month: "short", timeZone: "UTC"})
             + ' ' + date.toLocaleString(undefined, {day: "2-digit", timeZone: "UTC"})
-            + ( delta > 31536000 ? '\'' + date.toLocaleString(undefined, {year: "2-digit", timeZone: "UTC"}) : '')
+            + ( delta > 31536000 ? ' \'' + date.toLocaleString(undefined, {year: "2-digit", timeZone: "UTC"}) : '')
             + ' at' 
             + ' ' + date.toLocaleString(undefined, {minute: "2-digit", hour: "2-digit", hour12: false, timeZone: "UTC"});
       },
