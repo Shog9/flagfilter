@@ -3,7 +3,7 @@
 // @description   Implement https://meta.stackexchange.com/questions/305984/suggestions-for-improving-the-moderator-flag-overlay-view/305987#305987
 // @author        Shog9
 // @namespace     https://github.com/Shog9/flagfilter/
-// @version       0.89
+// @version       0.891
 // @include       http*://stackoverflow.com/questions/*
 // @include       http*://*.stackoverflow.com/questions/*
 // @include       http*://dev.stackoverflow.com/questions/*
@@ -98,32 +98,36 @@ function initStyles()
       color: #6A7E7C;
    }
       
-   /* this used to live in moderator.less... Then balpha killed it. But at least there was poetry.
-      (just in case you were curious about the presence of K&R braces) */
-   .mod-tools .mod-tools-post, .mod-tools .mod-tools-comment > :first-child {
-     border-left: 8px solid #DB5D5D;
+   .mod-tools.mod-tools-post, .mod-tools .mod-tools-comment > :first-child 
+   {
+      border-left: 8px solid #DB5D5D;
    }
 
-   .mod-tools .mod-tools-post {
-     padding: 10px 10px 10px 30px;
-     margin-bottom: 20px;
-     background-color: #EFF0F1;
+   .mod-tools.mod-tools-post 
+   {
+      grid-column: 1 / span 2;
+      padding: 10px 10px 10px 30px;
+      margin-bottom: 20px;
+      background-color: #EFF0F1;
    }
 
-   .mod-tools ul.flags li {
-         margin:5px;
-         padding: 5px;
-         line-height:17px;
-         background-color: #EFF0F1;
-         list-style:none;
+   .mod-tools ul.flags li 
+   {
+      margin:5px;
+      padding: 5px;
+      line-height:17px;
+      background-color: #EFF0F1;
+      list-style:none;
    }
 
-   .mod-tools ul.flags:hover .flag-dismiss {
-           visibility: visible;
+   .mod-tools ul.flags:hover .flag-dismiss 
+   {
+      visibility: visible;
    }
 
-   .mod-tools ul.flags .flag-info {
-       /* white-space: nowrap; */
+   .mod-tools ul.flags .flag-info 
+   {
+      /* white-space: nowrap; */
    }
 
    /**/   
@@ -676,18 +680,14 @@ function initQuestionPage()
 
          if (!flagsLink.length) return;
 
-         var tools = $(`<tr class="mod-tools" data-totalflags="${totalFlags}">
-<td colspan="2">
-<div class="mod-tools-post">
+         var tools = $(`<div class="mod-tools mod-tools-post" data-totalflags="${totalFlags}">
     <h3 class='flag-summary'><a class='show-all-flags' data-postid='${postId}'>${totalFlags} resolved flags</a></h3>
     <ul class="flags">
     </ul>
     <div class="mod-actions">
     </div>
-</div>
-</td>
-</tr>`)
-            .insertAfter(postContainer.find(">table tr:first"));
+</div>`)
+            .insertBefore(postContainer.find("div:has(>.comments)"));
 
          if (flags)
             ShowFlags(postContainer, flags, true);
@@ -697,7 +697,7 @@ function initQuestionPage()
 
    function ShowFlags(postContainer, postFlags, forceCommentVisibility)
    {
-      var tools = postContainer.find("tr.mod-tools");
+      var tools = postContainer.find(".mod-tools-post");
       var modActions = tools.find(".mod-actions")
          .empty();
 
@@ -811,7 +811,7 @@ function initQuestionPage()
    {
       var commentContainer = $("#comments-" + postId);
       var postContainer = commentContainer.closest(".question, .answer");
-      var tools = postContainer.find("tr.mod-tools");
+      var tools = postContainer.find(".mod-tools-post");
       var postFlags = flagCache[postId];
 
       if (!postFlags || ((!postFlags.commentFlags.length || !commentContainer.length) && !postFlags.assumeInactiveCommentFlagCount) ) return;
