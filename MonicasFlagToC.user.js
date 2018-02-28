@@ -3,7 +3,7 @@
 // @description   Implement https://meta.stackexchange.com/questions/305984/suggestions-for-improving-the-moderator-flag-overlay-view/305987#305987
 // @author        Shog9
 // @namespace     https://github.com/Shog9/flagfilter/
-// @version       0.891
+// @version       0.892
 // @include       http*://stackoverflow.com/questions/*
 // @include       http*://*.stackoverflow.com/questions/*
 // @include       http*://dev.stackoverflow.com/questions/*
@@ -98,7 +98,14 @@ function initStyles()
       color: #6A7E7C;
    }
       
-   .mod-tools.mod-tools-post, .mod-tools .mod-tools-comment > :first-child 
+   .mod-tools.mod-tools-post, 
+   .mod-tools .mod-tools-comment > :first-child
+   {
+      border-left: 8px solid #8D8D8D;
+   }
+      
+   .mod-tools.mod-tools-post.active-flag, 
+   .mod-tools .mod-tools-comment.active-flag > :first-child
    {
       border-left: 8px solid #DB5D5D;
    }
@@ -751,6 +758,8 @@ function initQuestionPage()
          let flagItem = RenderFlagItem(flag);
          flagContainer.append(flagItem);
       }
+      
+      tools.toggleClass("active-flag", !!activeCount);
 
       if (activeCount > 0)
       {
@@ -816,30 +825,23 @@ function initQuestionPage()
 
       if (!postFlags || ((!postFlags.commentFlags.length || !commentContainer.length) && !postFlags.assumeInactiveCommentFlagCount) ) return;
 
-      if (!commentContainer.find(".mod-tools-comment")
-         .length)
+      var commentModToolsContainer = commentContainer.find(".mod-tools-comment");
+      if ( !commentModToolsContainer.length)
       {
-         var commentModToolsContainer = commentContainer
-            .addClass("mod-tools")
-            .find(">table>tbody")
-            .prepend(`<tr class="comment mod-tools-comment">
-<td></td>
-<td class="comment-text">
-<h3 class="comment-flag-summary"></h3>
-</td>
-</tr>`);
-         
-         if ( !commentModToolsContainer.length ) 
-            commentModToolsContainer = commentContainer.find(">ul.comments-list")
-               .prepend(`<li class="comment mod-tools-comment">
+         commentModToolsContainer = $(`<li class="comment mod-tools-comment">
                                  <div class="js-comment-actions comment-actions"></div>
                                  <div class="comment-text">
                                     <h3 class="comment-flag-summary"></h3>
                                  </div>
                               </li>`);
+         commentContainer
+            .addClass("mod-tools")
+            .find(">ul.comments-list").prepend(commentModToolsContainer);
       }
       
-      commentContainer.find(".comment-text .flags").remove();
+      commentContainer
+         .find(".comment").removeClass("active-flag").end()
+         .find(".comment-text .flags").remove();
 
       var activeCount = 0;
       var inactiveCount = 0;
@@ -851,17 +853,22 @@ function initQuestionPage()
             container = $('<div><ul class="flags"></ul></div>')
             .appendTo(comment.find(".comment-text"))
             .find(".flags");
-
+         
          comment.addClass("mod-tools-comment");
 
          if (flag.active) 
+         {
             activeCount += flag.flaggers.length;
+            comment.addClass("active-flag");
+         }
          else
             inactiveCount += flag.flaggers.length;
          
          let flagItem = RenderFlagItem(flag);
          container.append(flagItem);
       }
+      
+      commentModToolsContainer.toggleClass("active-flag", !!activeCount);
 
       var totalFlags = tools.data("totalflags");
       var flagSummary = [];
