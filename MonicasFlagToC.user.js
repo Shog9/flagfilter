@@ -3,7 +3,7 @@
 // @description   Implement https://meta.stackexchange.com/questions/305984/suggestions-for-improving-the-moderator-flag-overlay-view/305987#305987
 // @author        Shog9
 // @namespace     https://github.com/Shog9/flagfilter/
-// @version       0.892
+// @version       0.893
 // @include       http*://stackoverflow.com/questions/*
 // @include       http*://*.stackoverflow.com/questions/*
 // @include       http*://dev.stackoverflow.com/questions/*
@@ -585,7 +585,7 @@ function initQuestionPage()
          })
 
          // Make individual flag dismissal work
-         .on("click", ".mod-tools .mod-tools-post .flag-dismiss", function()
+         .on("click", ".mod-tools.mod-tools-post .flag-dismiss", function()
          {
             var post = $(this).parents(".question, .answer");
             var postId = post.data("questionid") || post.data("answerid");
