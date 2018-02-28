@@ -808,7 +808,7 @@ function initQuestionPage()
          else
             ShowCommentFlags(postFlags.postId);
       }
-      else if (totalFlags > activeCount-inactiveCount)
+      else if (totalFlags > activeCount-inactiveCount || tools.find(".mod-tools-comment").length)
       {
          ShowCommentFlags(postFlags.postId);
       }
@@ -822,10 +822,14 @@ function initQuestionPage()
       var postContainer = commentContainer.closest(".question, .answer");
       var tools = postContainer.find(".mod-tools-post");
       var postFlags = flagCache[postId];
-
-      if (!postFlags || ((!postFlags.commentFlags.length || !commentContainer.length) && !postFlags.assumeInactiveCommentFlagCount) ) return;
-
       var commentModToolsContainer = commentContainer.find(".mod-tools-comment");
+
+      if (!postFlags || ((!postFlags.commentFlags.length || !commentContainer.length) && !postFlags.assumeInactiveCommentFlagCount) )
+      {
+         commentModToolsContainer.remove();
+         return;
+      }
+
       if ( !commentModToolsContainer.length)
       {
          commentModToolsContainer = $(`<li class="comment mod-tools-comment">
