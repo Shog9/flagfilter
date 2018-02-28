@@ -1061,44 +1061,31 @@ function initQuestionPage()
             }
          }
          
-         // consolidate identical flags
-         ret.flags = Object.values(ret.flags.reduce( function(acc, f)
-            {// TODO: split based on result date / user 
-               var key = f.description + f.active;
-               var composite = acc[key] || {
-                  description: f.description, 
-                  active: f.active,
-                  result: f.result,
-                  resultDate: f.resultDate,
-                  resultUser: f.resultUser,
-                  flaggers: [], 
-                  flagIds: [] };
-               composite.active = composite.active || f.active;
-               composite.flaggers.push.apply(composite.flaggers, f.flaggers.map(u => Object.assign({}, u)));
-               composite.flagIds.push.apply(composite.flagIds, f.flagIds);
-               acc[key] = composite;
-               return acc;
-            }, {}) );
-            
-         // consolidate identical flags on the same comment
-         ret.commentFlags = Object.values(ret.commentFlags.reduce( function(acc, f)
-            {
-               var key = f.commentId + f.description + f.active;
-               var composite = acc[key] || {
-                  commentId: f.commentId,
-                  description: f.description, 
-                  active: f.active,
-                  result: f.result,
-                  resultDate: f.resultDate,
-                  resultUser: f.resultUser,
-                  flaggers: [], 
-                  flagIds: [] };
-               composite.active = composite.active || f.active;
-               composite.flaggers.push.apply(composite.flaggers, f.flaggers.map(u => Object.assign({}, u)));
-               composite.flagIds.push.apply(composite.flagIds, f.flagIds);
-               acc[key] = composite;
-               return acc;
-            }, {}) );
+         // consolidate flags with similar description and disposition
+         
+         function consolidate(flagList)
+         {
+            return Object.values(flagList.reduce( function(acc, f)
+               {
+                  var key = [f.commentId, f.description, f.active, f.resultDate, f.resultUser && f.resultUser.userId].join(":");
+                  var composite = acc[key] || {
+                     commentId: f.commentId,
+                     description: f.description, 
+                     active: f.active,
+                     result: f.result,
+                     resultDate: f.resultDate,
+                     resultUser: f.resultUser,
+                     flaggers: [], 
+                     flagIds: [] };
+                  composite.flaggers.push.apply(composite.flaggers, f.flaggers.map(u => Object.assign({}, u)));
+                  composite.flagIds.push.apply(composite.flagIds, f.flagIds);
+                  acc[key] = composite;
+                  return acc;
+               }, {}) );
+         }
+         
+         ret.flags = consolidate(ret.flags);
+         ret.commentFlags = consolidate(ret.commentFlags);
          
          return ret;
       }
