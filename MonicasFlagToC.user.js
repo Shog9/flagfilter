@@ -186,16 +186,17 @@ function initStyles()
    }
 
    #postflag-bar .nav-button.close a {
+      background-color: #6a737c;
+      border: 1px solid #9fa6ad;
+      border-radius: 10px;
       color: white;
       display: block;
       padding: 2px 5px;
-      border: 1px solid #9fa6ad;
-      background-color: #6a737c;
-      border-radius: 10px;
    }
 
    #postflag-bar .nav-button.close a:hover {
-      color: white;
+      background-color: white;
+      color: #9fa6ad;
    }
    `;
 
