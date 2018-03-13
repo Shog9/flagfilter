@@ -170,6 +170,34 @@ function initStyles()
    {
       white-space: nowrap;
    }
+
+   /* fix close button in the flag bar to make the whole thing clickable */
+
+   #postflag-bar .nav-button.close {
+      color: unset;
+      padding: unset;
+      border: unset;
+      border-radius: unset;
+      background-color: unset;
+   }
+
+   #postflag-bar .nav-button.close:hover {
+      color: unset;
+   }
+
+   #postflag-bar .nav-button.close a {
+      background-color: #6a737c;
+      border: 1px solid #9fa6ad;
+      border-radius: 10px;
+      color: white;
+      display: block;
+      padding: 2px 5px;
+   }
+
+   #postflag-bar .nav-button.close a:hover {
+      background-color: white;
+      color: #9fa6ad;
+   }
    `;
 
    document.head.appendChild(flagStyles);
