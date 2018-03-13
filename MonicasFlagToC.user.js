@@ -829,7 +829,7 @@ function initQuestionPage()
          commentModToolsContainer.remove();
          return;
       }
-
+      
       if ( !commentModToolsContainer.length)
       {
          commentModToolsContainer = $(`<li class="comment mod-tools-comment">
@@ -844,11 +844,13 @@ function initQuestionPage()
       }
       
       commentContainer
+         .removeClass("dno")
          .find(".comment").removeClass("active-flag").end()
          .find(".comment-text .flags").remove();
 
       var activeCount = 0;
       var inactiveCount = 0;
+      var flagsShown = 0;
       for (let flag of postFlags.commentFlags)
       {
          let comment = commentContainer.find("#comment-" + flag.commentId);
@@ -868,6 +870,10 @@ function initQuestionPage()
          else
             inactiveCount += flag.flaggers.length;
          
+         if ( !comment.length )
+            continue;
+         
+         flagsShown += flag.flaggers.length;
          let flagItem = RenderFlagItem(flag);
          container.append(flagItem);
       }
@@ -882,6 +888,9 @@ function initQuestionPage()
       inactiveCount = inactiveCount || postFlags.assumeInactiveCommentFlagCount;
       if (inactiveCount)
          flagSummary.push(`${inactiveCount} resolved comment flags${postFlags.assumeInactiveCommentFlagCount ? '*' : ''}`);
+         
+      if ( flagsShown < (inactiveCount + activeCount) )
+         flagSummary.push(`(${flagsShown} shown; load all comments to view the rest)`);
       
       commentContainer.find("h3.comment-flag-summary")
          .html(flagSummary.join("; "));
