@@ -236,7 +236,15 @@ function initStyles()
    {
       content: "delete";
    }
-      
+
+   @supports (display: grid) and (not (display: contents) )
+   {
+      ul.comments-list .active-flag .comment-actions 
+      {
+         width: 54px;
+      }
+   }
+
    `;
 
    document.head.appendChild(flagStyles);
