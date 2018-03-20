@@ -3,7 +3,7 @@
 // @description   Implement https://meta.stackexchange.com/questions/305984/suggestions-for-improving-the-moderator-flag-overlay-view/305987#305987
 // @author        Shog9
 // @namespace     https://github.com/Shog9/flagfilter/
-// @version       0.894
+// @version       0.895
 // @include       http*://stackoverflow.com/questions/*
 // @include       http*://*.stackoverflow.com/questions/*
 // @include       http*://dev.stackoverflow.com/questions/*
@@ -127,9 +127,22 @@ function initStyles()
       list-style:none;
    }
 
-   .mod-tools ul.flags:hover .flag-dismiss 
+   
+   .mod-tools ul.flags .flag-dismiss, .comment .comment-actions .flag-dismiss
+   {
+      visibility: hidden;
+   }
+   
+   .mod-tools ul.flags:hover .flag-dismiss, .comment:hover .comment-actions .flag-dismiss
    {
       visibility: visible;
+   }
+   
+   .comment .comment-actions .flag-dismiss
+   {
+      grid-column: 1 / span 2;
+      padding-left: 2px;
+      text-align: center;
    }
 
    .mod-tools ul.flags .flag-info 
@@ -198,6 +211,32 @@ function initStyles()
       background-color: white;
       color: #9fa6ad;
    }
+
+   /*
+     Put comment delete link in consistent place, use words not symbols 
+   */
+   
+   .comment 
+   {
+      clear: both;
+   }
+   
+   .comment .comment-delete.delete-tag
+   {
+      background: none;
+      width: auto;
+      height: auto;
+      line-height: 20px;
+      margin: 0;
+      padding: 0;
+      float: right;      
+   }
+   
+   .comment .comment-delete.delete-tag::after
+   {
+      content: "delete";
+   }
+      
    `;
 
    document.head.appendChild(flagStyles);
@@ -596,15 +635,18 @@ function initQuestionPage()
       //  Wire up prototype mod tools
       $("#content")
          // Comment flag dismissal
-         .on("click", ".mod-tools .mod-tools-comment .flag-dismiss", function(ev)
+         .on("click", ".comment .flag-dismiss", function(ev)
          {
             ev.preventDefault();
 
             var post = $(this).parents(".question, .answer");
             var postId = post.data("questionid") || post.data("answerid");
             var commentId = $(this).parents(".comment").attr("id").match(/comment-(\d+)/)[1];
-            var flagIds = $(this).parents(".flag-info").data("flag-ids");
-            var flagListItem = $(this).parents(".flag-info").parent();
+            var flagInfo = $(this).parents(".flag-info");
+            if ( !flagInfo.length )
+               flagInfo = $(this).parents(".comment").find(".flag-info");
+            var flagIds = flagInfo.data("flag-ids");
+            var flagListItem = flagInfo.parent();
             if ( !commentId || !flagListItem.length )
                return;
 
@@ -903,7 +945,13 @@ function initQuestionPage()
          
          flagsShown += flag.flaggers.length;
          let flagItem = RenderFlagItem(flag);
+         let flagDismiss = flagItem.find(".flag-dismiss").remove();
          container.append(flagItem);
+         if ( !comment.find(".comment-actions .flag-dismiss").length )
+            flagDismiss
+               .html("dismiss<br>flags")
+               .removeClass("delete-tag")
+               .appendTo(comment.find(".comment-actions"));
       }
       
       commentModToolsContainer.toggleClass("active-flag", !!activeCount);
@@ -1027,7 +1075,7 @@ function initQuestionPage()
          return ret;
       }
    }
-   
+      
    function LoadAllFlags(postId)
    {      
       return LoadTimeline().then(ParseTimeline).then( af => flagCache[postId] = af );
