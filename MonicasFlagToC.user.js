@@ -3,7 +3,7 @@
 // @description   Implement https://meta.stackexchange.com/questions/305984/suggestions-for-improving-the-moderator-flag-overlay-view/305987#305987
 // @author        Shog9
 // @namespace     https://github.com/Shog9/flagfilter/
-// @version       0.896
+// @version       0.897
 // @include       http*://stackoverflow.com/questions/*
 // @include       http*://*.stackoverflow.com/questions/*
 // @include       http*://dev.stackoverflow.com/questions/*
@@ -647,19 +647,20 @@ function initQuestionPage()
          {
             ev.preventDefault();
 
-            var post = $(this).parents(".question, .answer");
+            var dismissLink = $(this);
+            var post = dismissLink.parents(".question, .answer");
             var postId = post.data("questionid") || post.data("answerid");
-            var commentId = $(this).parents(".comment").attr("id").match(/comment-(\d+)/)[1];
-            var flagInfo = $(this).parents(".flag-info");
+            var commentId = dismissLink.parents(".comment").attr("id").match(/comment-(\d+)/)[1];
+            var flagInfo = dismissLink.parents(".flag-info");
             if ( !flagInfo.length )
-               flagInfo = $(this).parents(".comment").find(".flag-info");
+               flagInfo = dismissLink.parents(".comment").find(".flag-info");
             var flagIds = flagInfo.data("flag-ids");
             var flagListItem = flagInfo.parent();
             if ( !commentId || !flagListItem.length )
                return;
 
             FlagFilter.tools.dismissAllCommentFlags(commentId, flagIds)
-               .done(function() { flagListItem.hide('medium'); /* annoying - don't do this RefreshFlagsForPost(postId); */  });
+               .done(function() { flagListItem.hide('medium'); dismissLink.hide(); /* annoying - don't do this RefreshFlagsForPost(postId); */  });
          })
 
          // Make individual flag dismissal work
@@ -706,7 +707,7 @@ function initQuestionPage()
          {
             var postId = $(this)
                .data('postid');
-            RefreshFlagsForPost(postId);
+            RefreshFlagsForPost(postId, true);
          });
          
    });
@@ -740,12 +741,12 @@ function initQuestionPage()
    
    return loaded.promise();
       
-   function RefreshFlagsForPost(postId)
+   function RefreshFlagsForPost(postId, expandComments)
    {
       var postContainer = $(".answer[data-answerid='"+postId+"'],.question[data-questionid='"+postId+"']")
       if ( !postContainer.length ) return;
       return LoadAllFlags(postId)
-         .then(flags => ShowFlags(postContainer, flags))
+         .then(flags => ShowFlags(postContainer, flags, expandComments))
          .then(flags => RenderToCInWaffleBar());
    }
 
