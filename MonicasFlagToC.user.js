@@ -1012,10 +1012,19 @@ function initQuestionPage()
          let flaggerNames = [];
          for (let user of flag.flaggers)
          {
-            if ( !user || !user.name ) continue;
+            if ( !user ) continue;
             
-            flaggerNames.push(`<a href="/users/${user.userId}" class="flag-creation-user comment-user">${user.name}</a>
-               <span class="flag-creation-date comment-date" dir="ltr"><span title="${FlagFilter.tools.formatISODate(user.flagCreationDate)}" class="relativetime-clean">${FlagFilter.tools.formatDate(user.flagCreationDate)}</span></span>`);
+            var userLink = user.name 
+               ? $(`<a href="/users/${user.userId}" class="flag-creation-user comment-user"></a>`)
+                  .text(user.name)
+                  .wrap('<div></div>').parent()
+                  .html()
+               : '';
+            var flagDate = user.flagCreationDate.getTime() 
+               ? `<span class="flag-creation-date comment-date" dir="ltr"><span title="${FlagFilter.tools.formatISODate(user.flagCreationDate)}" class="relativetime-clean">${FlagFilter.tools.formatDate(user.flagCreationDate)}</span></span>`
+               : '';
+               
+            flaggerNames.push( userLink + ' ' + flagDate );
          }
          
          flagItem.find(".flaggers").append(flaggerNames.join(", "));
