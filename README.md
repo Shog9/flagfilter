@@ -25,16 +25,16 @@ To use, have a current version of Chrome or Firefox with a current version of a 
 
 This userscript is also compatable with Firefox for Android if using a script manager and the full site page view.
 
-###Compatable Moderator Userscripts
+### Compatable Moderator Userscripts
 
 This is a brief list of Moderator Userscripts that are known to be usable (or not) in conjunction with Flag Filter on the question page. Userscript links below are to RAW install files.
 
-####Compatable:
+#### Compatable:
 - [animuson](https://github.com/animuson)'s [Stack Exchange Moderator Tools Improved (SEMTI)](https://github.com/animuson/se-mod-tools-improved/raw/master/better-mod-tools.user.js).
 - [ArtOfCode](https://github.com/ArtOfCode-)'s [Move SE Mod Info](https://github.com/ArtOfCode-/Userscripts/raw/master/stackexchange/mod/move_mod_info.user.js)
 
 
-####Incompatable:
+#### Incompatable:
 - ArtOfCode's [Show Comment Flagger](https://github.com/ArtOfCode-/Userscripts/raw/master/stackexchange/mod/comment_flagger.user.js) userscript is not compatable with Flag Filter, so having it will not reveal who flagged comments on the question page while Flag Filter is active. Flagger usernames can still be viewed on the flags dashboard or by temporarily disabling Flag Filter. Both userscripts can be active simultaneously without causing any errors.
 
 <a id="overview"></a> 
@@ -120,7 +120,7 @@ When all flags on a post have been resolved, viewing the page natively (rather t
 ### Comment flags
 
 <a id="acknowledgements"></a> 
-##Acknowledgements
+## Acknowledgements
 
 This project is possible due to the work and ideas of others.
 
