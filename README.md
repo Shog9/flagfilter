@@ -6,6 +6,7 @@ Flag Filter is a Stack Exchange moderator userscript designed to simplify the mo
 
 - [Getting Started](#getting-started)
 - [Overview](#overview)
+  - [Compatable Moderator Userscripts](#compatable-scripts) 
 - [The new Waffle Bar](#new-waffle)
 - [Inline flagging - Active flags](#active-flags)
   - [Post flags](#post-active)
@@ -13,20 +14,35 @@ Flag Filter is a Stack Exchange moderator userscript designed to simplify the mo
 - [Inline flagging - Resolved flags](#resolved-flags)
   - [Post flags](#post-resolved)
   - [Comment flags](#comment-resolved)
+- [Acknowledgements](#acknowledgements)
 
 <a id="getting-started"></a> 
 ## Getting Started
 
-This script will only work for diamond moderators or staff of the Stack Exchange Network on those sites where they have diamonds. 
+This script will only work for diamond moderators or staff of the Stack Exchange Network on those sites where they have diamonds. The information below is based on the moderator view. Some details may vary in a minor way for staff users.
 
-To use, have a current version of Chrome or Firefox with a current version of a userscript manager - generally Tampermonkey or Violentmonkey. Install the script by viewing the raw file on the GitHub Project page. 
+To use, have a current version of Chrome or Firefox with a current version of a userscript manager - generally [Tampermonkey](https://tampermonkey.net/) or [Violentmonkey](https://violentmonkey.github.io/get-it/). Install the script by viewing the [raw file](https://github.com/Shog9/flagfilter/raw/master/MonicasFlagToC.user.js) on the GitHub Project page. 
+
+This userscript is also compatable with Firefox for Android if using a script manager and the full site page view.
+
+###Compatable Moderator Userscripts
+
+This is a brief list of Moderator Userscripts that are known to be usable (or not) in conjunction with Flag Filter on the question page. Userscript links below are to RAW install files.
+
+####Compatable:
+- [animuson](https://github.com/animuson)'s [Stack Exchange Moderator Tools Improved (SEMTI)](https://github.com/animuson/se-mod-tools-improved/raw/master/better-mod-tools.user.js).
+- [ArtOfCode](https://github.com/ArtOfCode-)'s [Move SE Mod Info](https://github.com/ArtOfCode-/Userscripts/raw/master/stackexchange/mod/move_mod_info.user.js)
+
+
+####Incompatable:
+- ArtOfCode's [Show Comment Flagger](https://github.com/ArtOfCode-/Userscripts/raw/master/stackexchange/mod/comment_flagger.user.js) userscript is not compatable with Flag Filter, so having it will not reveal who flagged comments on the question page while Flag Filter is active. Flagger usernames can still be viewed on the flags dashboard or by temporarily disabling Flag Filter. Both userscripts can be active simultaneously without causing any errors.
 
 <a id="overview"></a> 
 ## Overview
 
-Flag Filter works by moving the flag content from the vertically-scrolling Waffle Bar directly onto the page with the Waffle Bar becoming a table-of-contents listing all posts (identified by type and username) with active flags and what those flags are. 
+Flag Filter works by moving the flag content from the vertically-scrolling Waffle Bar directly onto the page with the Waffle Bar becoming a table-of-contents listing all posts (identified by post type and username) with active flags and type of flag. 
 
-Multiple flags on the same post stack if they are the same - e.g. multiple comment flags on one post appear as a single item with a number indicating the quantity of flagged comments. These items are anchored to the flag so clicking on either the post or the flag will link to that part of the page. Post flags link to the top of the post, comment flags link to the comment.
+Multiple flags on the same post stack if they are the same - e.g. multiple comment flags on one post appear as a single item with a number indicating the quantity of flags on those comments. These items are anchored to the flag so clicking on either the post or the flag will link to that part of the page. Post flags link to the top of the post, comment flags link to the comment.
 
 <a id="new-waffle"></a> 
 ## The new Waffle Bar
@@ -37,7 +53,7 @@ The improved Waffle Bar has a table-of-contents style view. Instead of listing e
 
 When the heights of the boxes are different, they automatically space themselves to reduce vertical area.
 
-Active flags are noted in blue text, resolved flags in grey.
+Active flags are noted in colored text (depending on site theme), resolved flags in grey.
 
 As with the native version of the Waffle Bar, the new implementation only appears on pages with active flags or when the last flag was just handled and the page has not yet been refreshed. This allows easy movement between posts with active flags by using the grey arrows on either upper corner of the bar. 
 
@@ -46,7 +62,7 @@ To remove the Waffle Bar, hit the "close" button in the upper right corner or, i
 <a id="active-flags"></a> 
 ## Inline flagging - Active flags
 
-Inline flagging allows moderators to see the flags directly in context of the post or comment that was flagged. 
+Inline flagging allows moderators to see the flags directly in context of the post or comment that was flagged. It's no longer necessary to find where on the page the flag is; it's directly below the post or comment.
 
 <a id="post-active"></a> 
 ### Post flags
@@ -76,9 +92,9 @@ When viewing a post with comment flags, the entire comments section on the post 
 
 [![Active comments banner with active and resolved flags][6]][6]
 
-Clicking the blue text (in the image above "2 active comment flags") will reveal all deleted comments and the resolved comment flags. Viewing deleted comments by clicking "[n] deleted" will not reveal which deleted comments bear resolved flags.
+Clicking the colored text (in the image above "2 active comment flags") will reveal all deleted comments and the resolved comment flags. Viewing deleted comments by clicking "[n] deleted" will not reveal which deleted comments bear resolved flags.
 
-Comments with active flags will be marked with a red bar on the left side of the comment, while comments with resolved flags will be marked with a grey bar (these will only show when viewing full flag info [see below](#comment-resolved) for more information about resolved comment flags).
+Comments with active flags will be marked with a red bar on the left side of the comment, while comments with resolved flags will be marked with a grey bar (resolved flags will only show when viewing full flag info [see below](#comment-resolved) for more information about resolved comment flags).
 
 Each flaged comment will have a grey bar beneath it with the flag reason. On hover, the options will appear to "dismiss flags" (far left) or "delete" the comment (far right). The latter will automatically mark the flag as "helpful". If the comment should be deleted but the flag reason is incorrect, it's recommended to dismiss the flag before deleting the comment.
 
@@ -92,8 +108,6 @@ Unlike post flags, comment flags will not name who flagged the comment unless it
 
 [![Comment flagged multiple times][9]][9]
 
-**Note:** The Show Comment Flagger userscript is not compatable with Flag Filter, so having it will not reveal who flagged comments on the question page. They can still be viewed on the flags dashboard.
-
 <a id="resolved-flags"></a> 
 ## Inline flagging - Resolved flags
 
@@ -105,10 +119,20 @@ When all flags on a post have been resolved, viewing the page natively (rather t
 <a id="comment-resolved"></a> 
 ### Comment flags
 
+<a id="acknowledgements"></a> 
+##Acknowledgements
+
+This project is possible due to the work and ideas of others.
+
+The inline flag prototype was a never-completed project conceived and designed by [Jin](https://meta.stackexchange.com/users/147574/jin) and [Jarrod](https://meta.stackexchange.com/users/3/jarrod-dixon) in 2014. It was great as-is but it needed a solution for the difficulty of actually *finding* the flags on a very long page of full answers.
+
+The idea of converting the Waffle Bar (which had been originally designed by [waffles](https://meta.stackoverflow.com/users/17174/sam-saffron)) into the table-of-contents view came from [Monica Cellio](https://meta.stackexchange.com/users/162102/monica-cellio) when discussing improving the moderator post interface in early 2018.
+
+The combination of the two was a perfect match.
 
 
   [1]: https://i.stack.imgur.com/JU4tv.png
-  [2]: https://i.stack.imgur.com/68w4M.png
+  [2]: https://i.stack.imgur.com/m29bL.png
   [3]: https://i.stack.imgur.com/Mappa.png
   [4]: https://i.stack.imgur.com/uge2Q.png
   [5]: https://i.stack.imgur.com/k5nMl.png
