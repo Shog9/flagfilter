@@ -55,17 +55,17 @@ This is a huge mess.
 - Over half the page (on this small monitor) is taken up by the Waffle Bar, so little of the actual post is viewable.
 - There's no indication of how many flags there are on how many posts, only the really long scroll bar indicating that there are many.
 - The comments are still collapsed, so the first comment on the question that's flagged is invisble and lacking context.
-- Ignoring the bar and trying to use the post and comments directly makes it necessary to match up the flags in the Waffle Bar with the items flagged. To do so, each post or comment link goes directly to the post or comment.
+- Minimizing the bar to see more of the page hides *all* of the flag information, making it impossible to know which posts and comments have been flagged. When the bar is expanded, in order to get context, each post or comment link goes directly to the flagged post or comment.
 
 The same question with the Flag Filter userscript active, same volume of flags:
 
 [![Flag filter view][11]][11]
 
 - The table-of-contents is a fraction of the size and shows *all* of the 30 flags and flag reasons on five posts simultaneously, starting with the question.
-- The question is clearly marked as having been flagged and why. The shaded area with the colorful sidebar draws attention.
+- The question is clearly marked as having been flagged and why. The shaded area with the colorful sidebar draws attention. Each post and comments section lists the number of active and resolved flags.
 - Comments are expanded by default and marked similarly to the post. A colorful bar drawing attention to the flagged comment with a shaded area holding the flag reason.
-- Comments are deleted by clicking the word "delete" rather than a small x button. This gives a bigger target for clicking and disambiguates between dismissing the flag and deleting the comment (not shown, see [comments section below](#comment-active).
-- The bar can be easily ignored without collapsing and the flags seen by scrolling through the page, if the flags are difficult to find, flag links are anchored to the flag so clicking on either the post or the flag will link to that part of the page. Post flags link to the top of the post, comment flags link to the comment section.
+- Comments are deleted by clicking the word "delete" rather than a small x button. This gives a bigger target for clicking and disambiguates between dismissing the flag and deleting the comment (not shown, see [comments section](#comment-active) below).
+- The bar can be easily ignored without collapsing and the flags seen by scrolling through the page, if the flags are difficult to find, flag links are anchored to the relevant post or comments section; post flags link to the top of the post, comment flags link to the top of that post's comment section.
 
 <a id="new-waffle"></a> 
 ## The new Waffle Bar
@@ -154,8 +154,8 @@ The idea of converting the Waffle Bar (which had been originally designed by [wa
 The combination of the two was a perfect match.
 
 
-  [10]: https://i.stack.imgur.com/s4ssv.png
-  [11]: https://i.stack.imgur.com/99TiX.png
+  [10]: https://i.stack.imgur.com/LdugW.png
+  [11]: https://i.stack.imgur.com/wNAHn.png
   [1]: https://i.stack.imgur.com/JU4tv.png
   [2]: https://i.stack.imgur.com/m29bL.png
   [3]: https://i.stack.imgur.com/Mappa.png
