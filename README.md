@@ -154,8 +154,8 @@ The idea of converting the Waffle Bar (which had been originally designed by [wa
 The combination of the two was a perfect match.
 
 
-  [10]: https://i.stack.imgur.com/LdugW.png
-  [11]: https://i.stack.imgur.com/wNAHn.png
+  [10]: https://i.stack.imgur.com/9mKkg.png
+  [11]: https://i.stack.imgur.com/r8wAR.png
   [1]: https://i.stack.imgur.com/JU4tv.png
   [2]: https://i.stack.imgur.com/m29bL.png
   [3]: https://i.stack.imgur.com/Mappa.png
