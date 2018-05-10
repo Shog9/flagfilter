@@ -40,9 +40,32 @@ This is a brief list of Moderator Userscripts that are known to be usable (or no
 <a id="overview"></a> 
 ## Overview
 
-Flag Filter works by moving the flag content from the vertically-scrolling Waffle Bar directly onto the page with the Waffle Bar becoming a table-of-contents listing all posts (identified by post type and username) with active flags and type of flag. 
+Flag Filter works by moving the flag content from the vertically-scrolling Waffle Bar directly onto the page with the Waffle Bar becoming a table-of-contents listing all posts (identified by post type and username) with active flags and type of flag. While the native Waffle Bar is useful on questions with few flags, the more flags that exist on a Q&A thread, the more real estate the bar takes up, and the more searching the moderator has to do to match up the flag with the flagged post or comment and see it in context. 
 
-Multiple flags on the same post stack if they are the same - e.g. multiple comment flags on one post appear as a single item with a number indicating the quantity of flags on those comments. These items are anchored to the flag so clicking on either the post or the flag will link to that part of the page. Post flags link to the top of the post, comment flags link to the comment.
+When it comes to comments, the content is duplicated, as the comment text appears both on the page and in the Waffle Bar. On sites with huge volumes of comment flags, this makes for a lot of scrolling inside the Waffle Bar to review the flags and it's still often necessary (or at least helpful) to see them in context with the rest of the (unflagged) comments.
+
+Compare, these two images are the native view and Flag Filter view of the same post with many flags:
+
+The native view of a question with lots of flags:
+
+[![Native flagging view][10]][10]
+
+This is a huge mess. 
+
+- Over half the page (on this small monitor) is taken up by the Waffle Bar, so little of the actual post is viewable.
+- There's no indication of how many flags there are on how many posts, only the really long scroll bar indicating that there are many.
+- The comments are still collapsed, so the first comment on the question that's flagged is invisble and lacking context.
+- Ignoring the bar and trying to use the post and comments directly makes it necessary to match up the flags in the Waffle Bar with the items flagged. To do so, each post or comment link goes directly to the post or comment.
+
+The same question with the Flag Filter userscript active, same volume of flags:
+
+[![Flag filter view][11]][11]
+
+- The table-of-contents is a fraction of the size and shows *all* of the 30 flags and flag reasons on five posts simultaneously, starting with the question.
+- The question is clearly marked as having been flagged and why. The shaded area with the colorful sidebar draws attention.
+- Comments are expanded by default and marked similarly to the post. A colorful bar drawing attention to the flagged comment with a shaded area holding the flag reason.
+- Comments are deleted by clicking the word "delete" rather than a small x button. This gives a bigger target for clicking and disambiguates between dismissing the flag and deleting the comment (not shown, see [comments section below](#comment-active).
+- The bar can be easily ignored without collapsing and the flags seen by scrolling through the page, if the flags are difficult to find, flag links are anchored to the flag so clicking on either the post or the flag will link to that part of the page. Post flags link to the top of the post, comment flags link to the comment section.
 
 <a id="new-waffle"></a> 
 ## The new Waffle Bar
@@ -131,6 +154,8 @@ The idea of converting the Waffle Bar (which had been originally designed by [wa
 The combination of the two was a perfect match.
 
 
+  [10]: https://i.stack.imgur.com/s4ssv.png
+  [11]: https://i.stack.imgur.com/99TiX.png
   [1]: https://i.stack.imgur.com/JU4tv.png
   [2]: https://i.stack.imgur.com/m29bL.png
   [3]: https://i.stack.imgur.com/Mappa.png
