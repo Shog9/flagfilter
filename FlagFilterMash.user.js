@@ -3,6 +3,8 @@
 // @description   Alternate flag UI scratchpad
 // @author        Shog9
 // @namespace     https://github.com/Shog9/flagfilter/
+// @updateURL https://github.com/Shog9/flagtools/raw/master/FlagFilter.user.js
+// @downloadURL https://github.com/Shog9/flagtools/raw/master/FlagFilter.user.js
 // @version       3.11
 // @include       http*://stackoverflow.com/*
 // @include       http*://*.stackoverflow.com/*
